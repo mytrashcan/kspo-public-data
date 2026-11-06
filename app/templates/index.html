@@ -1,15 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="input-board" aria-labelledby="input-title">
-  <header class="board-heading">
-    <div>
-      <h1 id="input-title">같은 날, 각자의 운동.</h1>
-      <p>두 사람의 요일과 시간, 월 회비를 맞춰보세요.<br> 맞는 조합이 없으면 무엇을 얼마나 바꾸면 되는지 알려드려요.</p>
-    </div>
-    <div class="board-location">
-      <p>일산스포츠센터</p>
-      <p>데이터 기준 {{ meta.as_of_month }}</p>
-    </div>
+  <header class="masthead">
+    <h1 id="input-title">함께 운동 시간표</h1>
+    <p class="masthead-line">두 사람이 같은 날 각자 운동할 수 있는지, 일산스포츠센터 강좌 <strong>{{ meta.course_count }}</strong>개로 계산합니다. 성립하지 않으면 바꿀 조건을 제시합니다.</p>
+    <p class="masthead-stamp">데이터 기준 {{ meta.as_of_month }} · 갱신 연 1회 · 출처 data.go.kr 15114776</p>
   </header>
   <div class="board-toolbar">
     <h2>우리의 운동 조건</h2>
@@ -27,7 +22,7 @@
           <legend>갈 수 있는 요일</legend>
           <div class="days">
             {% for day in days %}
-            <label><input type="checkbox" name="{{ prefix }}_days" value="{{ day }}" {% if day in person.days %}checked{% endif %}><span><span class="day-check" aria-hidden="true">✓</span>{{ day }}</span></label>
+            <label><input type="checkbox" name="{{ prefix }}_days" value="{{ day }}" {% if day in person.days %}checked{% endif %}><span>{{ day }}</span></label>
             {% endfor %}
           </div>
         </fieldset>
