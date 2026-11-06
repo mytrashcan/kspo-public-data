@@ -57,6 +57,22 @@ def main() -> None:
         page.mouse.wheel(0, 300)
         wait(2500)
 
+        three = ("/plan?a_sport=%EA%B2%80%EB%8F%84"
+                 "&a_days=%EC%9B%94&a_days=%ED%99%94&a_days=%EC%88%98&a_days=%EB%AA%A9&a_days=%EA%B8%88"
+                 "&a_start=21:00&a_end=22:00"
+                 "&b_sport=%EB%B0%B0%EB%93%9C%EB%AF%BC%ED%84%B4"
+                 "&b_days=%EC%9B%94&b_days=%ED%99%94&b_days=%EC%88%98&b_days=%EB%AA%A9&b_days=%EA%B8%88"
+                 "&b_start=19:00&b_end=22:00"
+                 "&c_sport=%EC%8A%A4%EC%BF%BC%EC%8B%9C"
+                 "&c_days=%ED%99%94&c_days=%EB%AA%A9&c_days=%ED%86%A0&c_days=%EC%9D%BC"
+                 "&c_start=21:00&c_end=22:00")
+        page.goto(f"{BASE}{three}", wait_until="load")
+        wait(4500)
+        page.mouse.wheel(0, 360)
+        wait(3000)
+        page.mouse.wheel(0, -200)
+        wait(2000)
+
         evidence = page.locator("a", has_text="원문 근거 보기").first
         evidence.click()
         page.wait_for_load_state("load")
