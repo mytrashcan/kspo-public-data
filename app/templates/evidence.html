@@ -1,10 +1,14 @@
 {% extends "base.html" %}
 {% block title %}데이터 근거 | 함께 운동 시간표{% endblock %}
 {% block content %}
-<header class="page-heading"><div><h1>시간표의 원문 근거</h1><p>계산에 사용한 파일과 강좌의 원본 행을 확인하세요.</p></div></header>
+<header class="page-head">
+  <h1>시간표의 원문 근거</h1>
+  <p>계산에 쓴 파일과, 고른 두 강좌의 원본 CSV 행을 그대로 보여 드려요.</p>
+</header>
+
 <section class="provenance" aria-labelledby="file-title">
-  <h2 id="file-title">사용한 데이터</h2>
-  <dl class="file-details">
+  <h2 id="file-title">사용한 데이터 파일</h2>
+  <dl class="facts">
     <div><dt>데이터 기준 월</dt><dd><strong>{{ meta.as_of_month }}</strong></dd></div>
     <div><dt>유효 강좌</dt><dd>{{ meta.course_count }}개</dd></div>
     <div><dt>출처</dt><dd><a href="{{ source_url }}">한국체육산업개발주식회사_일산스포츠센터 강좌정보 (15114776)</a></dd></div>
@@ -12,16 +16,37 @@
     <div><dt>수집 시각</dt><dd>{{ meta.generated_at }}</dd></div>
     <div><dt>파일 해시 (SHA-256)</dt><dd class="hash">{{ meta.file_hash }}</dd></div>
   </dl>
-  <div class="provenance-notes"><p>이용허락: 원 제공처의 <a href="{{ source_url }}">이용허락범위</a>를 확인해 주세요. 출처를 명시해 원본 행과 계산 결과를 제공하며, 별도 이용허락 유형을 추정하지 않아요.</p><p>기준 월은 파일의 시작월 최댓값이에요. 시작일·종료일 필드는 이름만으로 해석하지 않고 아래에 그대로 보존해요. 날짜 문자열의 9999-12-31을 운영 상태로 해석하지 않아요.</p></div>
+  <div class="notes">
+    <p>이용허락: 원 제공처의 <a href="{{ source_url }}">이용허락범위</a>를 확인해 주세요. 출처를 밝혀 원본 행과 계산 결과를 보여 줄 뿐, 별도 이용허락 유형을 짐작하지 않아요.</p>
+    <p>기준 월은 파일에 있는 시작월의 최댓값이에요. 시작일·종료일 필드는 이름만 보고 해석하지 않고 아래에 그대로 두었어요. 날짜 문자열의 9999-12-31을 운영 상태로 읽지 않아요.</p>
+  </div>
 </section>
-{% for course in selected %}
-<section class="raw-course" aria-labelledby="raw-{{ loop.index }}">
-  <header class="raw-heading"><span class="person-mark">{{ 'A' if loop.first else 'B' }}</span><h2 id="raw-{{ loop.index }}">{{ course.name }}</h2></header>
-  <dl class="raw-summary"><div><dt>월 회비</dt><dd>{{ course.monthly_fee|money }}원</dd></div><div><dt>강습반 원문</dt><dd>{{ course.audience or '(빈 값)' }}</dd></div><div><dt>데이터 기준</dt><dd>{{ course.month }}</dd></div></dl>
-  <div class="table-scroll"><table><caption>강좌번호 {{ course.code }}의 원본 CSV 행</caption><thead><tr><th scope="col">원본 필드</th><th scope="col">원본 값</th></tr></thead><tbody>{% for key, value in course.raw.items() %}<tr><th scope="row">{{ key }}</th><td>{{ value }}</td></tr>{% endfor %}</tbody></table></div>
-</section>
+
+{% if selected %}
+<div class="raw-pair">
+  {% for course in selected %}{% set p = 'a' if loop.first else 'b' %}
+  <section class="raw" aria-labelledby="raw-{{ p }}">
+    <h2 id="raw-{{ p }}"><span class="who who-{{ p }}" aria-hidden="true">{{ p|upper }}</span><span>{{ course.name }}</span></h2>
+    <dl class="raw-summary">
+      <div><dt>월 회비</dt><dd>{{ course.monthly_fee|money }}원</dd></div>
+      <div><dt>강습반 원문</dt><dd>{{ course.audience or '(빈 값)' }}</dd></div>
+      <div><dt>데이터 기준</dt><dd>{{ course.month }}</dd></div>
+    </dl>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="강좌번호 {{ course.code }} 원본 행">
+      <table>
+        <caption>강좌번호 {{ course.code }}의 원본 CSV 행</caption>
+        <thead><tr><th scope="col">원본 필드</th><th scope="col">원본 값</th></tr></thead>
+        <tbody>{% for key, value in course.raw.items() %}<tr><th scope="row">{{ key }}</th><td>{{ value }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+</div>
 {% else %}
-<div class="empty evidence-empty"><h2>강좌를 고르면 원본 행을 볼 수 있어요.</h2><p>조합 결과에서 ‘원문 근거 보기’를 누르세요. 선택한 두 강좌의 CSV 행이 이곳에 표시돼요.</p></div>
-{% endfor %}
-<a class="button" href="/">조건 입력으로 돌아가기</a>
+<div class="empty">
+  <h2>강좌 두 개를 고르면 원본 행이 여기에 나와요</h2>
+  <p>결과 화면에서 ‘원문 근거 보기’를 누르면, 시간표에 그린 두 강좌의 CSV 행을 나란히 볼 수 있어요.</p>
+</div>
+{% endif %}
+<p class="back"><a class="button" href="/">조건 입력으로 돌아가기</a></p>
 {% endblock %}

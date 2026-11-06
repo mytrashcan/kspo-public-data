@@ -1,98 +1,109 @@
 {% extends "base.html" %}
-{% from "cards.html" import board as week_board, pair_detail, pair_row %}
+{% from "cards.html" import board as week_board, pair_detail, pair_row with context %}
 {% block title %}조합 결과 | 함께 운동 시간표{% endblock %}
 {% block content %}
-<header class="page-heading">
-  <div>
-    <h1>두 사람의 운동 시간표</h1>
-    <p class="masthead-stamp">데이터 기준 {{ meta.as_of_month }} · 강좌 {{ meta.course_count }}개 · 성립하지 않는 조건은 최소 변경으로 제시합니다.</p>
+<section class="query" aria-labelledby="query-title">
+  <h2 id="query-title" class="sr">입력한 조건</h2>
+  <ul class="query-lines">
+    {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
+    <li>
+      <span class="who who-{{ p }}" aria-hidden="true">{{ p|upper }}</span><span class="sr">{{ p|upper }}의 조건:</span>
+      <span class="q-strong">{{ days|select('in', person.days)|join(', ') or '요일 없음' }}</span>
+      <span class="q-strong">{{ person.start|clock }}–{{ person.end|clock }}</span>
+      <span>{% if person.max_monthly_fee is none %}월 회비 제한 없음{% else %}월 {{ person.max_monthly_fee|money }}원까지{% endif %}</span>
+      <span>{{ person.sport or '모든 종목' }}</span>
+      {% if person.excluded_sports %}<span>{{ person.excluded_sports|sort|join(', ') }} 빼고</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="query-actions">
+    <a class="button" href="{{ edit_url }}">조건 수정</a>
+    <details class="share">
+      <summary>같은 조건 공유 링크</summary>
+      <div class="share-body">
+        <input type="text" readonly value="{{ share }}" aria-label="공유 URL">
+        <a href="{{ share }}">공유 링크 열기</a>
+      </div>
+    </details>
   </div>
-  <a class="button" href="{{ edit_url }}">조건 수정</a>
-</header>
+</section>
 
-<div class="plan-layout">
-  <div class="plan-main">
-    <section class="conditions-block" aria-labelledby="conditions-title">
-      <div class="section-heading"><h2 id="conditions-title">조건</h2></div>
-      <ul class="condition-list">
-        {% for person in people %}
-        <li>
-          <span class="mark mark-{{ 'a' if loop.first else 'b' }}">{{ 'A' if loop.first else 'B' }}</span>
-          <span class="condition-days">{{ days|select('in', person.days)|join(', ') or '요일 없음' }}</span>
-          <span class="condition-time">{{ person.start|clock }}–{{ person.end|clock }}</span>
-          <span>월 예산 {% if person.max_monthly_fee is none %}제한 없음{% else %}{{ person.max_monthly_fee|money }}원{% endif %}</span>
-          <span>선호 {{ person.sport or '모든 종목' }}</span>
-          {% if person.excluded_sports %}<span>제외 {{ person.excluded_sports|sort|join(', ') }}</span>{% endif %}
-        </li>
+{% if board %}
+<section class="answer" aria-labelledby="answer-title">
+  <header class="answer-head">
+    <h1 id="answer-title">{{ selected.days|join(', ') }}요일에 {% if selected.simultaneous %}두 사람 수업 시간이 {{ selected.overlap_minutes }}분 겹쳐요{% else %}두 사람 수업이 {{ selected.gap_minutes }}분 간격으로 이어져요{% endif %}</h1>
+    <p>두 사람 월 회비 합계 {{ selected.total_monthly_fee|money }}원. 강좌 요일과 시간이 각자의 조건 안에 모두 들어오는지 확인했어요. 연령·성별 자격은 확인하지 않아요.</p>
+  </header>
+  <div class="answer-body">
+    {{ week_board(board, selected) }}
+    <div class="answer-side">
+      {{ pair_detail(selected) }}
+      <p class="total">두 사람 월 회비 합계 <strong>{{ selected.total_monthly_fee|money }}원</strong></p>
+      <a class="button" href="/evidence?a_code={{ selected.a.code|urlencode }}&amp;b_code={{ selected.b.code|urlencode }}">원문 근거 보기</a>
+    </div>
+  </div>
+</section>
+{% elif not result.simultaneous and not result.consecutive %}
+<section class="answer" id="suggestions" aria-labelledby="answer-title">
+  <header class="answer-head">
+    <h1 id="answer-title">지금 조건으로는 함께 갈 조합이 없어요</h1>
+    {% if not result.fully_impossible %}<p>조건을 하나씩 바꿔 실제 강좌로 다시 계산한 최소 변경 제안이에요. 제안 중 하나를 골라 다시 찾아보세요.</p>{% endif %}
+  </header>
+  <h2 class="suggest-title">최소 변경 제안</h2>
+  {% if result.fully_impossible %}
+  <div class="empty"><h3>이 데이터에서는 조합을 만들 수 없어요.</h3><p>요일과 시간, 예산, 종목 제한을 모두 풀어도 성립하는 조합이 없어요.</p><a href="{{ edit_url }}">조건 수정</a></div>
+  {% else %}
+  <ol class="suggestions">
+    {% for suggestion in result.suggestions %}
+    <li class="suggestion">
+      <div class="suggestion-main">
+      <h3>이 조건을 바꾸면 함께 갈 수 있어요</h3>
+      <ul class="changes">
+        {% for change in suggestion.changes %}{% set who, _, text = change.partition(': ') %}
+        <li>{% if who in ('A', 'B') and text %}<span class="who who-{{ who|lower }}" aria-hidden="true">{{ who }}</span><span><span class="sr">{{ who }}: </span>{{ text }}</span>{% else %}<span>{{ change }}</span>{% endif %}</li>
         {% endfor %}
       </ul>
-      <p class="hint">모든 강좌 요일과 시간이 각자의 조건에 들어오는지 확인했어요. 연령·성별 자격 확인은 포함하지 않아요.</p>
-      <details class="share-panel">
-        <summary>같은 조건 공유 링크</summary>
-        <div class="share-content">
-          <label class="share">공유 URL<input type="text" readonly value="{{ share }}" aria-label="공유 URL"></label>
-          <a href="{{ share }}">공유 링크 열기</a>
-        </div>
-      </details>
-    </section>
-
-    <section class="result-section" id="simultaneous" aria-labelledby="simultaneous-title">
-      <div class="section-heading"><h2 id="simultaneous-title">동시 조합</h2><span>{{ result.simultaneous|length }}개</span></div>
-      <p class="section-description">같은 요일에 수업 시간이 겹치는 조합이에요. 합계 월 회비가 낮은 순, 겹치는 시간이 긴 순이에요.</p>
-      {% if simultaneous_rows %}
-      <ol class="pick-list">{% for row in simultaneous_rows %}{{ pair_row(row) }}{% endfor %}</ol>
-      {% else %}<p class="empty">현재 조건에 맞는 동시 조합이 없어요.</p>{% endif %}
-      {% if result.simultaneous|length > 20 %}<p class="hint">상위 20개를 표시해요. 조건을 좁혀 다른 조합을 확인하세요.</p>{% endif %}
-    </section>
-
-    <section class="result-section" id="consecutive" aria-labelledby="consecutive-title">
-      <div class="section-heading"><h2 id="consecutive-title">연속 조합</h2><span>{{ result.consecutive|length }}개</span></div>
-      <p class="section-description">공통 요일에 두 수업 사이가 60분 이내인 조합이에요. 합계 월 회비가 낮은 순이에요.</p>
-      {% if consecutive_rows %}
-      <ol class="pick-list">{% for row in consecutive_rows %}{{ pair_row(row) }}{% endfor %}</ol>
-      {% else %}<p class="empty">현재 조건에 맞는 연속 조합이 없어요.</p>{% endif %}
-      {% if result.consecutive|length > 20 %}<p class="hint">상위 20개를 표시해요. 조건을 좁혀 다른 조합을 확인하세요.</p>{% endif %}
-    </section>
-
-    {% if not result.simultaneous and not result.consecutive %}
-    <section class="result-section" id="suggestions" aria-labelledby="suggestions-title">
-      <div class="section-heading"><h2 id="suggestions-title">최소 변경 제안</h2></div>
-      {% if result.fully_impossible %}
-      <div class="empty"><h3>이 데이터에서는 조합을 만들 수 없어요.</h3><p>요일과 시간, 예산, 종목 제한을 모두 풀어도 성립하는 조합이 없어요.</p><a href="{{ edit_url }}">조건 수정</a></div>
-      {% else %}
-      <p class="section-description">유형별 최소 변경을 실제 강좌로 검증했어요. 아래 제안에서 바꿀 수 있는 조건을 골라보세요.</p>
-      <details class="calculation-note"><summary>최소 변경은 어떻게 정하나요?</summary><div><p>요일은 추가 개수, 예산은 증액, 시간은 확장 분, 종목은 변경 인원으로 최소화해요. 한 유형만 바꿔 성립하는 방법이 없으면 여러 변경을 함께 제시해요.</p><p>변경 항목 수, 추가 월 회비, 추가 요일 수, 시간 확장 분 순으로 제안해요. 여러 변경이 적힌 제안은 모두 적용해야 성립해요. 시간 확장은 두 사람의 확장 분 합계예요.</p></div></details>
-      {% for suggestion in result.suggestions %}
-      <article class="suggestion">
-        <h3>이 조건을 바꾸면 함께 갈 수 있어요.</h3>
-        <ul class="change-list">{% for change in suggestion.changes %}<li>{{ change }}</li>{% endfor %}</ul>
-        <dl class="change-costs">
-          <div><dt>추가 월 예산</dt><dd>+{{ suggestion.extra_monthly_fee|money }}원</dd></div>
-          <div><dt>추가 요일</dt><dd>{{ suggestion.added_days }}개</dd></div>
-          <div><dt>시간창 확장</dt><dd>{{ suggestion.expanded_minutes }}분</dd></div>
-        </dl>
-        <p class="hint">추가 예산은 현재 예산 상한 대비 증액이에요. 실제 합계 월 회비는 아래 강좌 근거에 표시해요.</p>
-        <a class="button" href="{{ plan_url(suggestion.people) }}">변경한 조건으로 다시 보기</a>
+      <dl class="costs">
+        <div><dt>추가 월 예산</dt><dd>+{{ suggestion.extra_monthly_fee|money }}원</dd></div>
+        <div><dt>추가 요일</dt><dd>{{ suggestion.added_days }}개</dd></div>
+        <div><dt>시간 범위 확장</dt><dd>{{ suggestion.expanded_minutes }}분</dd></div>
+      </dl>
+      <p class="help">추가 예산은 지금 적은 상한에서 늘리는 금액이에요. 실제 월 회비는 이 제안으로 성립하는 두 강좌에 적혀 있어요.</p>
+      <a class="button primary" href="{{ plan_url(suggestion.people) }}">변경한 조건으로 다시 보기</a>
+      </div>
+      <div class="witness">
+        <p class="witness-title">이 제안으로 성립하는 두 강좌</p>
         {{ pair_detail(suggestion.witness) }}
-      </article>
-      {% endfor %}
-      {% endif %}
-    </section>
-    {% endif %}
-  </div>
+        <p class="witness-total">두 사람 월 회비 합계 <strong>{{ suggestion.witness.total_monthly_fee|money }}원</strong></p>
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+  <details class="method">
+    <summary>최소 변경은 어떻게 정하나요?</summary>
+    <p>요일은 추가 개수, 예산은 증액, 시간은 확장 분, 종목은 변경 인원으로 최소화해요. 한 유형만 바꿔 성립하는 방법이 없으면 여러 변경을 함께 제시해요.</p>
+    <p>변경 항목 수, 추가 월 회비, 추가 요일 수, 시간 확장 분 순으로 제안해요. 여러 변경이 적힌 제안은 모두 적용해야 성립해요. 시간 확장은 두 사람의 확장 분 합계예요.</p>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
 
-  <aside class="plan-board" aria-labelledby="board-title">
-    <h2 id="board-title" class="board-title">주간 시간표</h2>
-    {% if board %}
-    <p class="board-total">합계 월 <strong>{{ selected.total_monthly_fee|money }}원</strong></p>
-    <p class="board-caption">공통 요일 {{ selected.days|join(', ') }} · {% if selected.simultaneous %}겹치는 시간 {{ selected.overlap_minutes }}분{% else %}두 수업 사이 {{ selected.gap_minutes }}분{% endif %}</p>
-    {{ week_board(board, selected) }}
-    <p class="board-legend"><span class="mark mark-a">A</span> 첫 번째 사람<span class="mark mark-b">B</span> 두 번째 사람<span class="legend-overlap"></span> 두 수업이 겹치는 시간</p>
-    {{ pair_detail(selected) }}
-    <a class="button board-link" href="/evidence?a_code={{ selected.a.code|urlencode }}&amp;b_code={{ selected.b.code|urlencode }}">원문 근거 보기</a>
-    {% else %}
-    <p class="empty">표시할 조합이 없어요.</p>
-    {% endif %}
-  </aside>
+<div class="lists">
+  <section class="list" id="simultaneous" aria-labelledby="simultaneous-title">
+    <h2 id="simultaneous-title">동시 조합 <span>{{ result.simultaneous|length }}개</span></h2>
+    <p class="help">같은 요일에 두 수업 시간이 겹치는 조합. 합계 월 회비가 낮은 순, 겹치는 시간이 긴 순이에요.</p>
+    {% if simultaneous_rows %}
+    <ol class="picks">{% for row in simultaneous_rows %}{{ pair_row(row) }}{% endfor %}</ol>
+    {% if result.simultaneous|length > 20 %}<p class="help">상위 20개만 보여요. 조건을 좁히면 다른 조합을 볼 수 있어요.</p>{% endif %}
+    {% else %}<p class="none">현재 조건에 맞는 동시 조합이 없어요.</p>{% endif %}
+  </section>
+  <section class="list" id="consecutive" aria-labelledby="consecutive-title">
+    <h2 id="consecutive-title">연속 조합 <span>{{ result.consecutive|length }}개</span></h2>
+    <p class="help">공통 요일에 두 수업 사이가 60분 이내인 조합. 합계 월 회비가 낮은 순이에요.</p>
+    {% if consecutive_rows %}
+    <ol class="picks">{% for row in consecutive_rows %}{{ pair_row(row) }}{% endfor %}</ol>
+    {% if result.consecutive|length > 20 %}<p class="help">상위 20개만 보여요. 조건을 좁히면 다른 조합을 볼 수 있어요.</p>{% endif %}
+    {% else %}<p class="none">현재 조건에 맞는 연속 조합이 없어요.</p>{% endif %}
+  </section>
 </div>
 {% endblock %}

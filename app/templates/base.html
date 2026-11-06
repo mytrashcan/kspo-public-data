@@ -9,27 +9,22 @@
 <body>
 <a class="skip-link" href="#main">본문으로 건너뛰기</a>
 <header class="site-header">
-  <div class="inner">
-    <a class="brand" href="/">함께 운동 시간표</a>
-    <nav class="header-links" aria-label="주 메뉴">
-      <a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>조건 입력</a>
-      <a href="/evidence" {% if request.url.path == '/evidence' %}aria-current="page"{% endif %}>데이터 근거</a>
-    </nav>
-  </div>
+  <a class="brand" href="/">함께 운동 시간표</a>
+  <nav class="nav" aria-label="주 메뉴">
+    <a href="/" {% if request.url.path == '/' %}aria-current="page"{% endif %}>조건 입력</a>
+    <a href="/evidence" {% if request.url.path == '/evidence' %}aria-current="page"{% endif %}>데이터 근거</a>
+  </nav>
 </header>
 <main id="main" tabindex="-1">{% block content %}{% endblock %}</main>
 <footer class="site-footer">
-  <div class="inner footer-grid">
-    <div class="source-note">
-      <p class="footer-title">일산스포츠센터 강좌 데이터</p>
-      <p><strong>데이터 기준 {{ meta.as_of_month }}</strong></p>
-      <p>출처 <a href="{{ source_url }}" target="_blank" rel="noopener">data.go.kr {{ meta.dataset_id }}</a></p>
-    </div>
-    <div class="data-notes">
-      <p class="disclaimer">{{ disclaimer }}</p>
-      <p>금액은 원본의 금액 필드를 월 회비로 해석한 값입니다. 실제 운영 시간과 요금, 대상 조건은 센터에 확인해 주세요.</p>
-      <p>강습반은 원문 그대로 표시합니다. 연령·성별 자격을 자동 판정하지 않습니다.</p>
-    </div>
+  <div class="footer-source">
+    <p><strong>데이터 기준 {{ meta.as_of_month }}</strong>. 한국체육산업개발이 공개한 일산스포츠센터 강좌정보를 씁니다.</p>
+    <p>출처 <a href="{{ source_url }}" target="_blank" rel="noopener">data.go.kr {{ meta.dataset_id }}</a></p>
+  </div>
+  <div class="footer-notes">
+    <p class="disclaimer">{{ disclaimer }}</p>
+    <p>금액은 원본의 금액 필드를 월 회비로 읽은 값입니다. 실제 운영 시간과 요금, 대상 조건은 센터에 확인해 주세요.</p>
+    <p>강습반은 원문 그대로 표시합니다. 연령·성별 자격은 판정하지 않습니다.</p>
   </div>
 </footer>
 </body>
