@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% from "cards.html" import WHO %}
 {% block title %}데이터 근거 | 함께 운동 시간표{% endblock %}
 {% block content %}
 <header class="page-head">
-  <h1>시간표의 원문 근거</h1>
-  <p>계산에 쓴 파일과, 고른 두 강좌의 원본 CSV 행을 그대로 보여 드려요.</p>
+  <h1>이 시간표가 나온 근거</h1>
+  <p>계산에 쓴 파일이 무엇인지, 두 사람이 고른 수업이 원본 CSV에 어떻게 적혀 있는지 그대로 보여 드려요.</p>
 </header>
 
 <section class="provenance" aria-labelledby="file-title">
@@ -26,7 +27,7 @@
 <div class="raw-pair">
   {% for course in selected %}{% set p = 'a' if loop.first else 'b' %}
   <section class="raw" aria-labelledby="raw-{{ p }}">
-    <h2 id="raw-{{ p }}"><span class="who who-{{ p }}" aria-hidden="true">{{ p|upper }}</span><span>{{ course.name }}</span></h2>
+    <h2 id="raw-{{ p }}"><span class="who who-{{ p }}" aria-hidden="true">{{ WHO[p].mark }}</span><span><span class="sr">{{ WHO[p].own }} 수업: </span>{{ course.name }}</span></h2>
     <dl class="raw-summary">
       <div><dt>월 회비</dt><dd>{{ course.monthly_fee|money }}원</dd></div>
       <div><dt>강습반 원문</dt><dd>{{ course.audience or '(빈 값)' }}</dd></div>
@@ -44,9 +45,9 @@
 </div>
 {% else %}
 <div class="empty">
-  <h2>강좌 두 개를 고르면 원본 행이 여기에 나와요</h2>
-  <p>결과 화면에서 ‘원문 근거 보기’를 누르면, 시간표에 그린 두 강좌의 CSV 행을 나란히 볼 수 있어요.</p>
+  <h2>두 사람의 수업이 정해지면 원본 행이 여기에 나와요</h2>
+  <p>결과 화면에서 ‘원문 근거 보기’를 누르면, 시간표에 그린 두 수업의 CSV 행을 나란히 볼 수 있어요.</p>
 </div>
 {% endif %}
-<p class="back"><a class="button" href="/">조건 입력으로 돌아가기</a></p>
+<p class="back"><a class="button" href="/">둘이 정하러 돌아가기</a></p>
 {% endblock %}

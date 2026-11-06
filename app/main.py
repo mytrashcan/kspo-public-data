@@ -91,7 +91,7 @@ def build_board(pair) -> dict[str, object]:
 
 def select_pair(result, pick: str):
     """Pick the combination shown on the board; falls back to the cheapest result."""
-    pairs = (*result.simultaneous, *result.consecutive)
+    pairs = result.simultaneous
     if pick:
         left, _, right = pick.partition(":")
         for pair in pairs:
@@ -178,7 +178,6 @@ def create_app(database: Path | None = None) -> FastAPI:
             share=share,
             edit_url="/" + plan_url(people).removeprefix("/plan"),
             simultaneous_rows=pair_rows(result.simultaneous, base_query, selected),
-            consecutive_rows=pair_rows(result.consecutive, base_query, selected),
             board=build_board(selected) if selected else None,
             selected=selected,
         )
@@ -195,8 +194,8 @@ def create_app(database: Path | None = None) -> FastAPI:
             selected = [by_code[a_code], by_code[b_code]]
             full = Person(frozenset(DAYS), 0, 1440)
             pairs = search(tuple(selected), full, full)
-            if not pairs.simultaneous and not pairs.consecutive:
-                raise HTTPException(422, "공통 요일과 60분 이내 시간 관계가 없는 강좌입니다")
+            if not pairs.simultaneous:
+                raise HTTPException(422, "공통 요일과 마치는 시각이 같은 강좌 조합이 없습니다")
         return render(request, "evidence.html", selected=selected)
 
     @application.get("/meta")

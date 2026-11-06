@@ -1,8 +1,14 @@
-{# The week board: each weekday column is split into A lane | overlap seam | B lane,
+{# The two people. "나" holds the phone, "짝" is the one going along. Query keys stay a_/b_. #}
+{% set WHO = {
+  'a': {'mark': '나', 'topic': '나는', 'own': '내'},
+  'b': {'mark': '짝', 'topic': '짝은', 'own': '짝의'},
+} %}
+
+{# The week board: each weekday column is split into 나 lane | overlap seam | 짝 lane,
    so both classes stay visible and the shared minutes are drawn between them. #}
 {% macro board(grid, pair) %}
 {% set origin = (grid.hours|first|int) * 60 %}
-<figure class="board" style="--hours: {{ grid.hours|length }}" aria-label="선택한 조합의 주간 시간표, 월요일부터 일요일까지 {{ grid.hours|first }}시–24시">
+<figure class="board" style="--hours: {{ grid.hours|length }}" aria-label="두 사람 수업을 그린 주간 시간표, 월요일부터 일요일까지 {{ grid.hours|first }}시–24시">
   <div class="board-head" aria-hidden="true">
     <span></span>
     {% for day in days %}<span class="day-head{% if day in pair.days %} is-common{% endif %}">{{ day }}{% if day in pair.days %}<small>함께</small>{% endif %}</span>{% endfor %}
@@ -14,10 +20,10 @@
       {% for person in people %}{% set from_ = [person.start, origin]|max %}
       {% if day in person.days and person.end > from_ %}<div class="window window-{{ 'a' if loop.first else 'b' }}" style="--t: {{ (from_ - origin) / 60 }}; --h: {{ (person.end - from_) / 60 }}" aria-hidden="true"></div>{% endif %}
       {% endfor %}
-      {% for block in grid.blocks if block.day_index == d %}
-      <div class="block block-{{ block.person|lower }}" style="--t: {{ block.top / grid.row_h }}; --h: {{ block.height / grid.row_h }}">
-        <b>{{ block.person }}</b><span class="block-time">{{ block.time.split('–')[0] }}</span>
-        <span class="sr">{{ day }}요일 {{ block.name }} {{ block.time }}</span>
+      {% for block in grid.blocks if block.day_index == d %}{% set p = block.person|lower %}
+      <div class="block block-{{ p }}" style="--t: {{ block.top / grid.row_h }}; --h: {{ block.height / grid.row_h }}">
+        <b aria-hidden="true">{{ WHO[p].mark }}</b><span class="block-time" aria-hidden="true">{{ block.time.split('–')[0] }}</span>
+        <span class="sr">{{ day }}요일 {{ WHO[p].own }} 수업 {{ block.name }} {{ block.time }}</span>
       </div>
       {% endfor %}
       {% for overlap in grid.overlaps if overlap.day_index == d %}
@@ -27,23 +33,23 @@
     {% endfor %}
   </div>
   <figcaption class="board-key">
-    <span><i class="key-window"></i> 각자 적은 시간 범위</span>
-    <span><i class="who who-a">A</i> 첫 번째 사람의 수업</span>
-    <span><i class="who who-b">B</i> 두 번째 사람의 수업</span>
-    {% if pair.simultaneous %}<span><i class="key-seam"></i> 두 수업이 겹치는 {{ pair.overlap_minutes }}분</span>{% endif %}
+    <span><i class="key-window"></i> 각자 된다고 한 시간</span>
+    <span><i class="who who-a">나</i> 내 수업</span>
+    <span><i class="who who-b">짝</i> 짝의 수업</span>
+    <span><i class="key-seam"></i> 두 수업이 겹치는 {{ pair.overlap_minutes }}분</span>
   </figcaption>
 </figure>
 {% endmacro %}
 
+{# One class per person: the time and the fee are what people decide on; the rest is fine print. #}
 {% macro pair_detail(pair) %}
 <div class="pair-detail">
   {% for course in (pair.a, pair.b) %}{% set p = 'a' if loop.first else 'b' %}
-  <section class="course" aria-label="{{ p|upper }}의 강좌">
-    <h3><span class="who who-{{ p }}" aria-hidden="true">{{ p|upper }}</span><span>{{ course.name }}</span></h3>
+  <section class="course" aria-label="{{ WHO[p].own }} 수업">
+    <h3><span class="who who-{{ p }}" aria-hidden="true">{{ WHO[p].mark }}</span><span><span class="sr">{{ WHO[p].own }} 수업: </span>{{ course.name }}</span></h3>
     <p class="course-time">{{ course.start | clock }}–{{ course.end | clock }} <span>{{ course.days | join(', ') }}</span></p>
-    <dl>
-      <div><dt>종목</dt><dd>{{ course.sport }}</dd></div>
-      <div><dt>월 회비</dt><dd>{{ course.monthly_fee | money }}원</dd></div>
+    <p class="course-line">{{ course.sport }}, 한 달 <strong>{{ course.monthly_fee | money }}원</strong></p>
+    <dl class="fine">
       <div><dt>강습반 원문</dt><dd>{{ course.audience or '(빈 값)' }}</dd></div>
       <div><dt>강좌번호</dt><dd>{{ course.code }}</dd></div>
       <div><dt>장소</dt><dd>{{ course.center }}</dd></div>
@@ -59,13 +65,13 @@
 <li class="pick{% if row.selected %} is-selected{% endif %}">
   <a href="{{ row.href }}"{% if row.selected %} aria-current="true"{% endif %}>
     <span class="pick-courses">
-      <span><i class="who who-a" aria-hidden="true">A</i><span class="pick-time">{{ pair.a.start | clock }}–{{ pair.a.end | clock }}</span> {{ pair.a.name }}</span>
-      <span><i class="who who-b" aria-hidden="true">B</i><span class="pick-time">{{ pair.b.start | clock }}–{{ pair.b.end | clock }}</span> {{ pair.b.name }}</span>
+      <span><i class="who who-a" aria-hidden="true">나</i><span class="sr">나: </span><span class="pick-time">{{ pair.a.start | clock }}–{{ pair.a.end | clock }}</span> {{ pair.a.name }}</span>
+      <span><i class="who who-b" aria-hidden="true">짝</i><span class="sr">짝: </span><span class="pick-time">{{ pair.b.start | clock }}–{{ pair.b.end | clock }}</span> {{ pair.b.name }}</span>
     </span>
     <span class="pick-facts">
-      <span class="pick-fee">{{ pair.total_monthly_fee | money }}원</span>
-      <span>{{ pair.days | join(', ') }}, {% if pair.simultaneous %}겹침 {{ pair.overlap_minutes }}분{% else %}간격 {{ pair.gap_minutes }}분{% endif %}</span>
-      {% if row.selected %}<span class="pick-state">시간표에 표시 중</span>{% endif %}
+      <span class="pick-fee">둘이 {{ pair.total_monthly_fee | money }}원</span>
+      <span>{{ pair.days | join(', ') }}, {{ pair.overlap_minutes }}분 겹침</span>
+      {% if row.selected %}<span class="pick-state">시간표에 그린 짝</span>{% endif %}
     </span>
   </a>
 </li>

@@ -50,7 +50,7 @@ class FormValues(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
         if tag == "input" and "name" in attributes:
-            if attributes.get("type") != "checkbox" or "checked" in attributes:
+            if attributes.get("type") not in ("checkbox", "radio") or "checked" in attributes:
                 self.values.append((attributes["name"], attributes.get("value", "")))
         elif tag == "select":
             self.select_name = attributes["name"]
@@ -77,7 +77,7 @@ def test_one_click_demo_submits_actual_form(client: TestClient) -> None:
     from urllib.parse import urlencode
     response = client.get("/plan?" + urlencode(parser.values))
     assert response.status_code == 200
-    for evidence in ("동시 조합", "TRX", "농구", "100,000원", "35,000원", "135,000원", "1029879", "21832", "18:00–18:50", "강습반 원문"):
+    for evidence in ("같은 시간에 각자", "TRX", "농구", "100,000원", "35,000원", "135,000원", "1029879", "21832", "18:00–18:50", "강습반 원문"):
         assert evidence in response.text
     assert '기구필라 18시(화목)' not in response.text
 

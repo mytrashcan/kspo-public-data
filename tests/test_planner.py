@@ -30,15 +30,17 @@ def test_real_demo_pair_fees_and_evidence() -> None:
     assert not result.suggestions
 
 
-def test_adjacent_and_gap_limit() -> None:
-    a = course("a", start=1020, end=1070)
-    b = course("b")
-    p = person(start=1000)
-    result = plan((a, b), p, p)
-    assert not result.simultaneous
-    assert result.consecutive[0].gap_minutes == 10
-    assert search((a, replace(b, start=1130, end=1180)), person(start=1000, end=1200), person(start=1000, end=1200)).consecutive
-    assert not search((a, replace(b, start=1131, end=1180)), person(start=1000, end=1200), person(start=1000, end=1200)).consecutive
+def test_end_times_must_match() -> None:
+    """두 사람이 함께 나오려면 마치는 시각이 같아야 한다."""
+    a = course("a")
+    wide = person(start=1000, end=1200)
+    assert search((a, course("b")), wide, wide).simultaneous
+    # 마치는 시각이 다르면 조합이 아니다 (한 사람이 먼저 끝나 기다리게 된다)
+    assert not search((a, replace(course("b"), end=1180)), wide, wide).simultaneous
+    assert not search((a, replace(course("b"), start=1130, end=1180)), wide, wide).simultaneous
+    # 시작이 달라도 마치는 시각이 같으면 겹치는 시간만큼은 함께 있다
+    later = search((a, replace(course("b"), start=1100)), person(), person())
+    assert later.simultaneous[0].overlap_minutes == 30
 
 
 def test_simultaneous_sort_fee_then_longest_overlap() -> None:
@@ -61,7 +63,7 @@ def test_each_relaxation_is_exact_and_rerunnable(kind: str) -> None:
     else:
         b = replace(b, sport=None, excluded_sports=frozenset(("TRX",)))
     result = plan(courses, a, b)
-    assert not result.simultaneous and not result.consecutive
+    assert not result.simultaneous
     suggestion = next(s for s in result.suggestions if s.categories == frozenset((kind,)))
     assert suggestion.witness in search(courses, *suggestion.people).simultaneous
     assert suggestion.extra_monthly_fee == (5000 if kind == "budget" else 0)
@@ -79,26 +81,21 @@ def test_minimum_budget_and_time_from_actual_courses() -> None:
     assert result.suggestions[0].extra_monthly_fee == 5000
 
 
-def test_all_four_relaxation_types_rank_and_verify() -> None:
+def test_relaxations_are_ranked_and_each_witness_verified() -> None:
     courses = (
         course("a", sport="농구"),
         course("budget", sport="TRX", monthly_fee=40000),
-        course("time", sport="TRX", end=1170),
         course("days", sport="TRX", days=("화", "목", "토")),
         course("sport", sport="요가"),
-        course("more-time", sport="TRX", end=1200),
-        course("more-days", sport="TRX", days=("화", "목", "토", "일")),
     )
-    result = plan(courses, person(sport="농구"), person(sport="TRX", max_monthly_fee=35000))
-    assert {next(iter(s.categories)) for s in result.suggestions} == {"days", "budget", "time", "sport"}
+    result = plan(courses, person(sport="농구"),
+                  person(sport="TRX", max_monthly_fee=35000, end=1100, days=frozenset(("화",))))
+    assert result.suggestions
     assert [s.rank for s in result.suggestions] == sorted(s.rank for s in result.suggestions)
     for suggestion in result.suggestions:
         assert suggestion.witness in search(courses, *suggestion.people).simultaneous
-        if suggestion.categories == frozenset(("time",)):
-            assert suggestion.expanded_minutes == 30
-        if suggestion.categories == frozenset(("days",)):
-            assert suggestion.added_days == 1
-            assert "토요일" in suggestion.changes[0]
+    touched = set().union(*(s.categories for s in result.suggestions))
+    assert {"days", "time"} <= touched
 
 
 def test_start_window_expansion_is_exact() -> None:
@@ -136,10 +133,10 @@ def test_no_cross_month_center_or_disjoint_days_and_full_course_required() -> No
     assert not search((a, course("b")), person(days=frozenset(("화",))), person()).simultaneous
 
 
-def test_touching_sessions_are_zero_gap_simultaneous() -> None:
+def test_sessions_that_only_touch_are_not_a_pair() -> None:
+    """앞 수업이 끝난 뒤 다음 수업이 시작하는 '이어서' 조합은 함께 운동이 아니므로 제외한다."""
     p = person(end=1200)
-    result = search((course("a"), course("b", start=1130, end=1180)), p, p)
-    assert result.simultaneous[0].overlap_minutes == 0
+    assert not search((course("a"), course("b", start=1130, end=1180)), p, p).simultaneous
 
 
 @pytest.mark.parametrize("kwargs", [{"start": 1140, "end": 1080}, {"max_monthly_fee": -1}, {"days": frozenset(("휴일",))}])

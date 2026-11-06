@@ -29,15 +29,10 @@ class Combination:
     b: Course
     days: tuple[str, ...]
     overlap_minutes: int
-    gap_minutes: int
 
     @property
     def total_monthly_fee(self) -> int:
         return self.a.monthly_fee + self.b.monthly_fee
-
-    @property
-    def simultaneous(self) -> bool:
-        return self.gap_minutes == 0
 
 
 @dataclass(frozen=True)
@@ -60,7 +55,6 @@ class Relaxation:
 @dataclass(frozen=True)
 class Plan:
     simultaneous: tuple[Combination, ...]
-    consecutive: tuple[Combination, ...]
     suggestions: tuple[Relaxation, ...] = ()
     fully_impossible: bool = False
 
@@ -84,26 +78,24 @@ def _pair(a: Course, b: Course) -> Combination | None:
     days = tuple(day for day in DAYS if day in a.days and day in b.days)
     if not days:
         return None
-    overlap = min(a.end, b.end) - max(a.start, b.start)
-    if overlap < -60:
+    # 두 사람이 함께 나가려면 마치는 시각이 같아야 한다.
+    if a.end != b.end:
         return None
-    return Combination(a, b, days, max(0, overlap), max(0, -overlap))
+    return Combination(a, b, days, a.end - max(a.start, b.start))
 
 
 def search(courses: tuple[Course, ...], a: Person, b: Person) -> Plan:
     """Require every listed class day and its full session to fit each person."""
     simultaneous: list[Combination] = []
-    consecutive: list[Combination] = []
     eligible_a = [course for course in courses if _eligible(course, a)]
     eligible_b = [course for course in courses if _eligible(course, b)]
     for course_a in eligible_a:
         for course_b in eligible_b:
             pair = _pair(course_a, course_b)
             if pair is not None:
-                (simultaneous if pair.simultaneous else consecutive).append(pair)
+                simultaneous.append(pair)
     simultaneous.sort(key=lambda pair: (pair.total_monthly_fee, -pair.overlap_minutes, pair.a.code, pair.b.code))
-    consecutive.sort(key=lambda pair: (pair.total_monthly_fee, pair.gap_minutes, pair.a.code, pair.b.code))
-    return Plan(tuple(simultaneous), tuple(consecutive))
+    return Plan(tuple(simultaneous))
 
 
 def _required_changes(pair: Combination, people: tuple[Person, Person]) -> Relaxation:
@@ -159,16 +151,16 @@ def _within_type_rank(change: Relaxation) -> tuple[int, ...]:
 
 def plan(courses: tuple[Course, ...], a: Person, b: Person) -> Plan:
     result = search(courses, a, b)
-    if result.simultaneous or result.consecutive:
+    if result.simultaneous:
         return result
     unrestricted = Person(frozenset(DAYS), 0, 1440)
     full = search(courses, unrestricted, unrestricted)
-    if not full.simultaneous and not full.consecutive:
+    if not full.simultaneous:
         return replace(result, fully_impossible=True)
 
     # One minimum per individual type; if none works alone, one combined change.
     best: dict[str, Relaxation] = {}
-    for pair in (*full.simultaneous, *full.consecutive):
+    for pair in full.simultaneous:
         candidate = _required_changes(pair, (a, b))
         key = next(iter(candidate.categories)) if len(candidate.categories) == 1 else "combined"
         if key not in best or _within_type_rank(candidate) < _within_type_rank(best[key]):
@@ -178,6 +170,6 @@ def plan(courses: tuple[Course, ...], a: Person, b: Person) -> Plan:
     verified = []
     for candidate in candidates:
         rerun = search(courses, *candidate.people)
-        if candidate.witness in (*rerun.simultaneous, *rerun.consecutive):
+        if candidate.witness in rerun.simultaneous:
             verified.append(candidate)
     return replace(result, suggestions=tuple(sorted(verified, key=lambda change: change.rank)))

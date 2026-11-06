@@ -1,97 +1,100 @@
 {% extends "base.html" %}
+{% from "cards.html" import WHO %}
 {% block content %}
 <div class="intro">
-  <h1>둘이 같은 날 갈 수 있는 강좌를 찾아요</h1>
-  <p>일산스포츠센터 {{ meta.as_of_month }} 강좌 {{ meta.course_count }}개에서 두 사람의 조건에 모두 맞는 짝을 찾습니다. 맞는 짝이 없으면 무엇을 얼마나 바꾸면 되는지 알려 드려요.</p>
+  <h1>같이 가서, 각자 운동할 수 있을까요?</h1>
+  <p>일산스포츠센터 {{ meta.as_of_month }} 강좌 {{ meta.course_count }}개에서, 두 사람이 같은 날 함께 가서 각자 다른 수업을 듣는 방법을 찾아요. 안 맞으면 무엇을 얼마나 바꾸면 되는지 알려 드려요.</p>
+  <p class="pair-legend"><span><i class="who who-a" aria-hidden="true">나</i>휴대폰을 든 사람</span><span><i class="who who-b" aria-hidden="true">짝</i>같이 갈 사람</span></p>
   <p><a class="text-button" href="/?example=1">예시 채우기</a></p>
   {% if request.query_params.get('example') == '1' %}
-  <p class="example-note" role="status">예시를 채웠어요. 두 사람 모두 화, 목 18:00–19:00이며 A는 월 100,000원, B는 월 70,000원까지예요.</p>
+  <p class="example-note" role="status">예시를 채웠어요. 둘 다 화, 목 18:00–19:00에 갈 수 있고, 나는 한 달 100,000원, 짝은 70,000원까지 낼 수 있어요.</p>
   {% endif %}
 </div>
 
 <form class="sheet" action="/plan" method="get">
-  <div class="row" role="group" aria-labelledby="row-days">
-    <p class="row-name" id="row-days">갈 수 있는 요일</p>
-    <div class="row-body">
-      <div class="week">
+  <fieldset class="ask">
+    <legend><h2>언제 같이 갈 수 있어요?</h2></legend>
+    <div class="week">
+      {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
+      <span class="who who-{{ p }}" aria-hidden="true">{{ WHO[p].mark }}</span>
+      {% for day in days %}
+      <label class="day day-{{ p }}"><input type="checkbox" id="{{ p }}-d{{ loop.index0 }}" name="{{ p }}_days" value="{{ day }}" {% if day in person.days %}checked{% endif %}><span><span class="sr">{{ WHO[p].mark }}: </span>{{ day }}</span></label>
+      {% endfor %}
+      {% endfor %}
+      <span class="both-label" aria-hidden="true">둘 다</span>
+      {% for day in days %}<span class="both both-{{ loop.index0 }}" aria-hidden="true"><span>함께</span></span>{% endfor %}
+    </div>
+    <p class="help">둘 다 고른 요일 아래에 ‘함께’가 떠요. 같이 가는 날은 그중에서만 찾아요.</p>
+  </fieldset>
+
+  <fieldset class="ask">
+    <legend><h2>몇 시부터 몇 시까지 돼요?</h2></legend>
+    <div class="spans">
+      {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
+      <div class="span-line">
+        <span class="who who-{{ p }}" aria-hidden="true">{{ WHO[p].mark }}</span>
+        <span class="span">
+          <select name="{{ p }}_start" aria-label="{{ WHO[p].mark }}: 몇 시부터">
+            {% for minute in range(0, 1440) if minute % 30 == 0 or minute == person.start %}<option value="{{ minute|clock }}" {% if minute == person.start %}selected{% endif %}>{{ minute|clock }}</option>{% endfor %}
+          </select>
+          <span class="span-dash" aria-hidden="true">–</span>
+          <select name="{{ p }}_end" aria-label="{{ WHO[p].mark }}: 몇 시까지">
+            {% for minute in range(1, 1441) if minute % 30 == 0 or minute == person.end %}<option value="{{ minute|clock }}" {% if minute == person.end %}selected{% endif %}>{{ minute|clock }}</option>{% endfor %}
+          </select>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="help">수업의 요일과 시간이 모두 이 안에 들어오는 강좌만 찾아요. 30분 단위이고, 끝은 24:00까지 고를 수 있어요.</p>
+  </fieldset>
+
+  <div class="optional">
+    <p class="optional-lead">아래는 정하지 않아도 돼요. 비워 두면 금액과 종목을 따지지 않고 찾아요.</p>
+
+    <fieldset class="ask ask-quiet">
+      <legend><h2>한 달 회비는 얼마까지 괜찮아요?</h2></legend>
+      <div class="spans">
         {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
-        <span class="who who-{{ p }}" aria-hidden="true">{{ p|upper }}</span>
-        {% for day in days %}
-        <label class="day day-{{ p }}"><input type="checkbox" id="{{ p }}-d{{ loop.index0 }}" name="{{ p }}_days" value="{{ day }}" {% if day in person.days %}checked{% endif %}><span><span class="sr">{{ p|upper }} </span>{{ day }}</span></label>
+        <div class="span-line">
+          <span class="who who-{{ p }}" aria-hidden="true">{{ WHO[p].mark }}</span>
+          <label class="money"><input type="number" inputmode="numeric" min="0" max="9999999999" step="1" name="{{ p }}_budget" value="{{ person.max_monthly_fee if person.max_monthly_fee is not none else '' }}" aria-label="{{ WHO[p].mark }}: 한 달 회비 상한(원)"><span>원까지</span></label>
+        </div>
         {% endfor %}
-        {% endfor %}
-        <span class="both-label" aria-hidden="true">둘 다</span>
-        {% for day in days %}<span class="both both-{{ loop.index0 }}" aria-hidden="true"><span>함께</span></span>{% endfor %}
       </div>
-    </div>
-  </div>
+    </fieldset>
 
-  <div class="row" role="group" aria-labelledby="row-time">
-    <p class="row-name" id="row-time">운동할 수 있는 시간</p>
-    <div class="row-body pair-lines">
-      {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
-      <div class="line">
-        <span class="who who-{{ p }}" aria-hidden="true">{{ p|upper }}</span>
-        <label class="inline-field"><select name="{{ p }}_start" aria-label="{{ p|upper }} 시작 시각">
-          {% for minute in range(0, 1440) %}{% if minute % 10 == 0 or minute == person.start %}<option value="{{ minute|clock }}" {% if minute == person.start %}selected{% endif %}>{{ minute|clock }}</option>{% endif %}{% endfor %}
-        </select><span>부터</span></label>
-        <label class="inline-field"><select name="{{ p }}_end" aria-label="{{ p|upper }} 종료 시각">
-          {% for minute in range(1, 1441) %}{% if minute % 10 == 0 or minute == person.end %}<option value="{{ minute|clock }}" {% if minute == person.end %}selected{% endif %}>{{ minute|clock }}</option>{% endif %}{% endfor %}
-        </select><span>까지</span></label>
-      </div>
-      {% endfor %}
-      <p class="help">강좌에 적힌 모든 요일과 시간이 이 범위 안에 들어와야 해요.</p>
-    </div>
-  </div>
-
-  <div class="row" role="group" aria-labelledby="row-fee">
-    <p class="row-name" id="row-fee">최대 월 회비</p>
-    <div class="row-body pair-lines">
-      {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
-      <div class="line">
-        <span class="who who-{{ p }}" aria-hidden="true">{{ p|upper }}</span>
-        <label class="inline-field money"><input type="number" min="0" max="9999999999" step="1" name="{{ p }}_budget" placeholder="제한 없음" value="{{ person.max_monthly_fee if person.max_monthly_fee is not none else '' }}" aria-label="{{ p|upper }} 최대 월 회비(원)" aria-describedby="fee-help"><span>원까지</span></label>
-      </div>
-      {% endfor %}
-      <p class="help" id="fee-help">비워 두면 금액을 제한하지 않아요.</p>
-    </div>
-  </div>
-
-  <div class="row" role="group" aria-labelledby="row-sport">
-    <p class="row-name" id="row-sport">하고 싶은 종목</p>
-    <div class="row-body pair-lines">
-      {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
-      <div class="line">
-        <span class="who who-{{ p }}" aria-hidden="true">{{ p|upper }}</span>
-        <label class="inline-field wide"><select name="{{ p }}_sport" aria-label="{{ p|upper }} 선호 종목"><option value="">모든 종목</option>{% for sport in sports %}<option {% if sport == person.sport %}selected{% endif %}>{{ sport }}</option>{% endfor %}{% if person.sport and person.sport not in sports %}<option selected>{{ person.sport }}</option>{% endif %}</select></label>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  {% set extra = ((people[0].excluded_sports|list) + (people[1].excluded_sports|list))|reject('in', sports)|unique|sort %}
-  <div class="row" role="group" aria-labelledby="row-exclude">
-    <div class="row-name">
-      <p id="row-exclude">빼고 싶은 종목</p>
-      <p class="help">선택 사항이에요. A나 B 칸을 누르면 그 사람의 결과에서 종목이 빠지고 칸에 사선이 그어져요.</p>
-    </div>
-    <div class="row-body">
-      <ul class="ex-grid">
-        {% for sport in sports + extra %}
-        <li class="ex-row">
-          <span class="ex-name">{{ sport }}</span>
-          {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
-          <label class="ex-cell ex-{{ p }}"><input type="checkbox" name="{{ p }}_exclude" value="{{ sport }}" {% if sport in person.excluded_sports %}checked{% endif %}><span><span class="sr">{{ p|upper }}에서 {{ sport }} 빼기</span><span aria-hidden="true">{{ p|upper }}</span></span></label>
+    {% set extra = (([people[0].sport, people[1].sport]|select|list) + (people[0].excluded_sports|list) + (people[1].excluded_sports|list))|reject('in', sports)|unique|sort %}
+    {% set all_sports = sports + extra %}
+    <fieldset class="ask ask-quiet">
+      <legend><h2>하고 싶은 종목, 빼고 싶은 종목이 있어요?</h2></legend>
+      <p class="help">한 사람마다 <b>✓ 하고 싶은 종목</b>은 하나만, <b>✕ 빼고 싶은 종목</b>은 여러 개 고를 수 있어요.</p>
+      <div class="sport-cols">
+        {% for chunk in ([none] + all_sports)|slice(2) %}
+        <div class="sport-col">
+          <div class="sport-head" aria-hidden="true">
+            <span></span><span class="sh sh-want">✓ 이것만</span><span class="sh sh-skip">✕ 빼기</span>
+            <span></span>{% for p in ('a', 'b', 'a', 'b') %}<span class="sh-who">{{ WHO[p].mark }}</span>{% endfor %}
+          </div>
+          {% for sport in chunk %}
+          <div class="sport-row{% if sport is none %} is-all{% endif %}">
+            <span class="sport-name">{{ sport or '모든 종목' }}</span>
+            {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
+            <label class="cell want cell-{{ p }}"><input type="radio" name="{{ p }}_sport" value="{{ sport or '' }}" {% if (sport or none) == (person.sport or none) %}checked{% endif %}><span><span class="sr">{{ WHO[p].mark }}: {% if sport %}{{ sport }}만 하고 싶어요{% else %}모든 종목{% endif %}</span><span class="mark" aria-hidden="true">{{ WHO[p].mark }}</span></span></label>
+            {% endfor %}
+            {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
+            {% if sport %}<label class="cell skip cell-{{ p }}"><input type="checkbox" name="{{ p }}_exclude" value="{{ sport }}" {% if sport in person.excluded_sports %}checked{% endif %}><span><span class="sr">{{ WHO[p].mark }}: {{ sport }} 빼기</span><span class="mark" aria-hidden="true">{{ WHO[p].mark }}</span></span></label>{% else %}<span class="cell-blank" aria-hidden="true"></span>{% endif %}
+            {% endfor %}
+          </div>
           {% endfor %}
-        </li>
+        </div>
         {% endfor %}
-      </ul>
-    </div>
+      </div>
+    </fieldset>
   </div>
 
   <div class="sheet-submit">
-    <button class="button primary" type="submit">함께 갈 수 있는 조합 찾기</button>
-    <p class="help">공통 요일이 하루라도 있는 서로 다른 두 강좌만 비교해요.</p>
+    <button class="button primary" type="submit">같이 갈 수 있는 날 찾기</button>
+    <p class="help">같은 요일이 하루라도 있는 서로 다른 두 수업끼리만 짝지어 봐요.</p>
   </div>
 </form>
 {% endblock %}
