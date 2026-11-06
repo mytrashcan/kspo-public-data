@@ -21,13 +21,73 @@ def test_real_demo_pair_fees_and_evidence() -> None:
     result = plan(courses, person(), person(max_monthly_fee=70000))
     assert result.simultaneous
     pair = result.simultaneous[0]
-    assert {pair.a.code, pair.b.code} == {"1029879", "21832"}
+    assert set(pair.codes) == {"1029879", "21832"}
     assert pair.total_monthly_fee == 135000
     assert pair.days == ("화", "목")
     assert pair.overlap_minutes == 50
-    assert pair.a.month == pair.b.month == "2026-10"
-    assert pair.a.audience and pair.b.audience
+    assert {course.month for course in pair.courses} == {"2026-10"}
+    assert all(course.audience for course in pair.courses)
     assert not result.suggestions
+
+
+WEEKDAYS = frozenset(("월", "화", "수", "목", "금"))
+
+
+def test_real_three_person_group_ends_together() -> None:
+    """검도 + 배드민턴 + 스쿼시: 화·목 21:50에 셋이 같이 끝나고, 합계 197,000원."""
+    courses = parse_csv(FIXTURE.read_bytes()).courses
+    people = (Person(WEEKDAYS, 1260, 1320, sport="검도"),
+              Person(WEEKDAYS, 1140, 1320, sport="배드민턴"),
+              Person(frozenset(("화", "목", "토", "일")), 1260, 1320, sport="스쿼시"))
+    result = plan(courses, *people)
+    group = result.simultaneous[0]
+    assert group.codes == ("1022624", "21365", "1016477")
+    assert [course.monthly_fee for course in group.courses] == [70000, 65000, 62000]
+    assert group.total_monthly_fee == 197000
+    assert group.days == ("화", "목")
+    assert {course.end for course in group.courses} == {1310}
+    assert group.end == 1310 and group.first_start == 1140
+    assert group.overlap_minutes == 50
+    assert not result.suggestions
+
+
+def test_every_person_needs_a_different_course_on_a_shared_day() -> None:
+    wide = person(start=1000, end=1200)
+    two = (course("a"), course("b"))
+    assert search(two, wide, wide).simultaneous
+    # 강좌 두 개로는 세 사람이 서로 다른 수업을 들을 수 없다
+    assert not search(two, wide, wide, wide).simultaneous
+    three = two + (course("c"),)
+    assert len(search(three, wide, wide, wide).simultaneous) == 6
+    # 셋째 수업이 마치는 시각이 다르거나, 셋이 겹치는 요일이 없으면 조합이 아니다
+    assert not search(two + (course("c", end=1180),), wide, wide, wide).simultaneous
+    everyday = replace(wide, days=frozenset(DAYS))
+    split = (course("a", days=("화", "수")), course("b", days=("수", "목")), course("c", days=("목", "화")))
+    assert not search(split, everyday, everyday, everyday).simultaneous
+    group = search(two + (course("c", start=1110),), wide, wide, wide).simultaneous[0]
+    assert group.overlap_minutes == 20
+
+
+def test_group_size_is_two_to_four() -> None:
+    with pytest.raises(ValueError):
+        search((course("a"),), person())
+    with pytest.raises(ValueError):
+        search((course("a"),), *(person(),) * 5)
+
+
+def test_four_person_relaxation_is_per_person_and_rerun() -> None:
+    courses = tuple(course(code, sport=sport, monthly_fee=fee) for code, sport, fee in
+                    (("a", "농구", 35000), ("b", "TRX", 40000), ("c", "요가", 30000), ("d", "검도", 50000)))
+    people = (person(sport="농구"), person(sport="TRX", max_monthly_fee=35000),
+              person(sport="요가", days=frozenset(("화",))), person(sport="검도"))
+    result = plan(courses, *people)
+    assert not result.simultaneous and result.suggestions
+    combined = result.suggestions[0]
+    assert combined.categories == frozenset(("budget", "days"))
+    assert combined.changes == ("B: 예산을 월 5,000원 늘리면 성립 (35,000원 → 40,000원)",
+                                "C: 목요일을 추가로 허용하면 성립")
+    assert combined.people[0] == people[0] and combined.people[3] == people[3]
+    assert combined.witness in search(courses, *combined.people).simultaneous
 
 
 def test_end_times_must_match() -> None:

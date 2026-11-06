@@ -41,7 +41,7 @@ def main() -> None:
         page.mouse.wheel(0, 320)
         wait(2500)
 
-        page.get_by_role("button", name="함께 갈 수 있는 조합 찾기").click()
+        page.get_by_role("button", name="같이 갈 수 있는 날 찾기").click()
         page.wait_for_load_state("load")
         wait(4000)
         page.mouse.wheel(0, 520)
@@ -49,7 +49,7 @@ def main() -> None:
         page.mouse.wheel(0, -260)
         wait(2000)
 
-        rows = page.locator(".pick > a")
+        rows = page.locator(".picks a")
         if rows.count() > 1:
             rows.nth(1).click()
             page.wait_for_load_state("load")

@@ -1,5 +1,6 @@
-"""Find evidenced pairs and verify the smallest changes within each change type."""
+"""Find evidenced groups (2–4 people) and verify the smallest changes within each change type."""
 
+from collections import defaultdict
 from dataclasses import dataclass, replace
 
 from app.ingest import Course, DAYS, format_clock
@@ -23,16 +24,33 @@ class Person:
             raise ValueError("예산은 0원 이상이어야 합니다")
 
 
+MIN_PEOPLE, MAX_PEOPLE = 2, 4
+LABELS = ("A", "B", "C", "D")
+
+
 @dataclass(frozen=True)
 class Combination:
-    a: Course
-    b: Course
+    """One course per person, in person order; all on common days and ending together."""
+    courses: tuple[Course, ...]
     days: tuple[str, ...]
     overlap_minutes: int
 
     @property
     def total_monthly_fee(self) -> int:
-        return self.a.monthly_fee + self.b.monthly_fee
+        return sum(course.monthly_fee for course in self.courses)
+
+    @property
+    def codes(self) -> tuple[str, ...]:
+        return tuple(course.code for course in self.courses)
+
+    @property
+    def first_start(self) -> int:
+        """When the earliest class starts: the group arrives together by then."""
+        return min(course.start for course in self.courses)
+
+    @property
+    def end(self) -> int:
+        return self.courses[0].end
 
 
 @dataclass(frozen=True)
@@ -43,7 +61,7 @@ class Relaxation:
     added_days: int
     expanded_minutes: int
     sport_changes: int
-    people: tuple[Person, Person]
+    people: tuple[Person, ...]
     witness: Combination
 
     @property
@@ -72,39 +90,52 @@ def _eligible(course: Course, person: Person) -> bool:
     )
 
 
-def _pair(a: Course, b: Course) -> Combination | None:
-    if a.code == b.code or a.center != b.center or a.month != b.month:
-        return None
-    days = tuple(day for day in DAYS if day in a.days and day in b.days)
-    if not days:
-        return None
-    # 두 사람이 함께 나가려면 마치는 시각이 같아야 한다.
-    if a.end != b.end:
-        return None
-    return Combination(a, b, days, a.end - max(a.start, b.start))
+def _groups(candidates: list[list[Course]]) -> list[Combination]:
+    """Every assignment of distinct courses, one per person, that shares a day and an end time."""
+    buckets: list[dict[tuple[str, str, int], list[Course]]] = []
+    for eligible in candidates:
+        bucket: dict[tuple[str, str, int], list[Course]] = defaultdict(list)
+        for course in eligible:
+            # 함께 나가려면 마치는 시각이 같아야 한다: 같은 센터·같은 달·같은 종료 시각끼리만 본다.
+            bucket[(course.center, course.month, course.end)].append(course)
+        buckets.append(bucket)
+    found: list[Combination] = []
+
+    def extend(key: tuple[str, str, int], index: int, chosen: tuple[Course, ...], days: frozenset[str]) -> None:
+        if index == len(buckets):
+            common = tuple(day for day in DAYS if day in days)
+            found.append(Combination(chosen, common, key[2] - max(course.start for course in chosen)))
+            return
+        for course in buckets[index].get(key, ()):
+            shared = days & set(course.days)
+            if shared and all(course.code != other.code for other in chosen):
+                extend(key, index + 1, chosen + (course,), shared)
+
+    for key in set(buckets[0]).intersection(*buckets[1:]):
+        extend(key, 0, (), frozenset(DAYS))
+    return found
 
 
-def search(courses: tuple[Course, ...], a: Person, b: Person) -> Plan:
+def _check_size(people: tuple[Person, ...]) -> None:
+    if not MIN_PEOPLE <= len(people) <= MAX_PEOPLE:
+        raise ValueError(f"{MIN_PEOPLE}명에서 {MAX_PEOPLE}명까지 함께 찾을 수 있어요")
+
+
+def search(courses: tuple[Course, ...], *people: Person) -> Plan:
     """Require every listed class day and its full session to fit each person."""
-    simultaneous: list[Combination] = []
-    eligible_a = [course for course in courses if _eligible(course, a)]
-    eligible_b = [course for course in courses if _eligible(course, b)]
-    for course_a in eligible_a:
-        for course_b in eligible_b:
-            pair = _pair(course_a, course_b)
-            if pair is not None:
-                simultaneous.append(pair)
-    simultaneous.sort(key=lambda pair: (pair.total_monthly_fee, -pair.overlap_minutes, pair.a.code, pair.b.code))
-    return Plan(tuple(simultaneous))
+    _check_size(people)
+    found = _groups([[course for course in courses if _eligible(course, person)] for person in people])
+    found.sort(key=lambda group: (group.total_monthly_fee, -group.overlap_minutes, group.codes))
+    return Plan(tuple(found))
 
 
-def _required_changes(pair: Combination, people: tuple[Person, Person]) -> Relaxation:
-    """Derive exact boundary changes from a real pair, never hypothetical prices."""
+def _required_changes(group: Combination, people: tuple[Person, ...]) -> Relaxation:
+    """Derive exact boundary changes per person from a real group, never hypothetical prices."""
     updated: list[Person] = []
     changes: list[str] = []
     categories: set[str] = set()
     extra_fee = added_days = expanded_minutes = sport_changes = 0
-    for label, course, person in zip(("A", "B"), (pair.a, pair.b), people):
+    for label, course, person in zip(LABELS, group.courses, people):
         missing = tuple(day for day in DAYS if day in course.days and day not in person.days)
         if missing:
             categories.add("days")
@@ -137,7 +168,7 @@ def _required_changes(pair: Combination, people: tuple[Person, Person]) -> Relax
             excluded_sports=frozenset() if sport_change else person.excluded_sports,
         ))
     return Relaxation(frozenset(categories), tuple(changes), extra_fee, added_days,
-                      expanded_minutes, sport_changes, (updated[0], updated[1]), pair)
+                      expanded_minutes, sport_changes, tuple(updated), group)
 
 
 def _within_type_rank(change: Relaxation) -> tuple[int, ...]:
@@ -149,19 +180,19 @@ def _within_type_rank(change: Relaxation) -> tuple[int, ...]:
     return change.rank
 
 
-def plan(courses: tuple[Course, ...], a: Person, b: Person) -> Plan:
-    result = search(courses, a, b)
+def plan(courses: tuple[Course, ...], *people: Person) -> Plan:
+    result = search(courses, *people)
     if result.simultaneous:
         return result
     unrestricted = Person(frozenset(DAYS), 0, 1440)
-    full = search(courses, unrestricted, unrestricted)
+    full = search(courses, *(unrestricted,) * len(people))
     if not full.simultaneous:
         return replace(result, fully_impossible=True)
 
     # One minimum per individual type; if none works alone, one combined change.
     best: dict[str, Relaxation] = {}
-    for pair in full.simultaneous:
-        candidate = _required_changes(pair, (a, b))
+    for group in full.simultaneous:
+        candidate = _required_changes(group, people)
         key = next(iter(candidate.categories)) if len(candidate.categories) == 1 else "combined"
         if key not in best or _within_type_rank(candidate) < _within_type_rank(best[key]):
             best[key] = candidate
@@ -169,6 +200,7 @@ def plan(courses: tuple[Course, ...], a: Person, b: Person) -> Plan:
     candidates = single or [best["combined"]]
     verified = []
     for candidate in candidates:
+        # 제안은 바꾼 조건으로 다시 검색해서 그 조합이 실제로 나올 때만 보여 준다.
         rerun = search(courses, *candidate.people)
         if candidate.witness in rerun.simultaneous:
             verified.append(candidate)

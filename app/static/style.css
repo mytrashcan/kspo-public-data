@@ -1,12 +1,15 @@
 /* 함께 운동 시간표
    Court floor colours: A is the green court surface, B is the yellow line paint,
-   and the minutes they share are drawn as a seam striped with both.
+   C is the blue of a hard court, D the maple of a gym floor. Dark, light, dark, light,
+   and a letter on every mark. The minutes everyone shares are a mat striped green and yellow.
    Radius means "you can press this" (6px); data surfaces stay square. No shadows. */
 
 :root {
   color-scheme: light;
   --court: #1e5b49;
   --line: #f1c232;
+  --hard: #2b5c93;
+  --maple: #d39b5e;
   --ink: #1a2e28;
   --muted: #56655f;
   --floor: #e4ebe6;
@@ -66,6 +69,8 @@ main { padding-top: 48px; padding-bottom: 72px; }
 }
 .who-a { background: var(--court); color: #fff; }
 .who-b { background: var(--line); color: var(--ink); }
+.who-c { background: var(--hard); color: #fff; }
+.who-d { background: var(--maple); color: var(--ink); }
 
 .button {
   display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 10px 20px;
@@ -81,12 +86,12 @@ main { padding-top: 48px; padding-bottom: 72px; }
 .intro { max-width: 760px; margin-bottom: 44px; }
 .intro h1 + p { margin-top: 14px; font-size: 17px; color: var(--muted); max-width: 52ch; }
 .intro p + p { margin-top: 12px; }
-.pair-legend { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 15px; }
-.pair-legend > span { display: inline-flex; align-items: center; gap: 8px; }
+.example-links { display: flex; flex-wrap: wrap; gap: 4px 24px; }
+.default-submit { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); padding: 0; border: 0; }
 .example-note { padding: 10px 14px; background: var(--floor); font-size: 15px; }
 
 /* Questions, not form rows: the two that decide the trip are big, the rest are quiet. */
-.sheet { max-width: 860px; }
+.sheet { position: relative; max-width: 860px; }
 fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 legend { padding: 0; }
 .ask { display: grid; gap: 16px; }
@@ -98,6 +103,16 @@ legend { padding: 0; }
 .ask-quiet h2 { font-size: 18px; letter-spacing: -0.02em; }
 .ask-quiet + .ask-quiet { margin-top: 36px; }
 .help b { color: var(--ink); font-weight: 600; }
+
+/* who is going: the roster grows and shrinks by submitting the form back to this page */
+.roster-list { display: flex; flex-wrap: wrap; gap: 10px 28px; font-size: 16px; }
+.roster-list li { display: inline-flex; align-items: center; gap: 10px; }
+.roster-actions { display: flex; flex-wrap: wrap; gap: 10px 12px; }
+.button.add { border-color: var(--court); color: var(--court); }
+.button.add::before { content: "+"; margin-right: 8px; font-size: 19px; font-weight: 800; line-height: 1; }
+.button.add:hover { background: var(--floor); }
+.button.quiet { border-color: var(--rule); color: var(--muted); font-weight: 400; }
+.button.quiet:hover { border-color: var(--edge); color: var(--ink); }
 
 /* weekdays: 나 and 짝 share the same seven columns */
 .week { display: grid; grid-template-columns: 26px repeat(7, 60px); gap: 8px; align-items: center; justify-content: start; }
@@ -111,6 +126,8 @@ legend { padding: 0; }
 .day:hover > span { border-color: var(--edge); color: var(--ink); }
 .day-a input:checked + span { background: var(--court); border-color: var(--court); color: #fff; font-weight: 800; }
 .day-b input:checked + span { background: var(--line); border-color: var(--ink); color: var(--ink); font-weight: 800; }
+.day-c input:checked + span { background: var(--hard); border-color: var(--hard); color: #fff; font-weight: 800; }
+.day-d input:checked + span { background: var(--maple); border-color: var(--ink); color: var(--ink); font-weight: 800; }
 .day input:focus-visible + span, .cell input:focus-visible + span { outline: 3px solid var(--court); outline-offset: 2px; }
 .both-label { grid-column: 1; font-size: 12px; color: var(--muted); line-height: 1.2; text-align: center; }
 .both { display: block; height: 30px; }
@@ -118,13 +135,28 @@ legend { padding: 0; }
   display: none; height: 100%; padding-top: 10px; text-align: center; font-size: 13px; font-weight: 800;
   background: var(--seam) top / 100% 6px no-repeat;
 }
-.week:has(#a-d0:checked):has(#b-d0:checked) .both-0 > span,
-.week:has(#a-d1:checked):has(#b-d1:checked) .both-1 > span,
-.week:has(#a-d2:checked):has(#b-d2:checked) .both-2 > span,
-.week:has(#a-d3:checked):has(#b-d3:checked) .both-3 > span,
-.week:has(#a-d4:checked):has(#b-d4:checked) .both-4 > span,
-.week:has(#a-d5:checked):has(#b-d5:checked) .both-5 > span,
-.week:has(#a-d6:checked):has(#b-d6:checked) .both-6 > span { display: block; }
+/* "함께" shows under a day only when every person on the sheet has picked it. */
+.week-2:has(#a-d0:checked):has(#b-d0:checked) .both-0 > span,
+.week-2:has(#a-d1:checked):has(#b-d1:checked) .both-1 > span,
+.week-2:has(#a-d2:checked):has(#b-d2:checked) .both-2 > span,
+.week-2:has(#a-d3:checked):has(#b-d3:checked) .both-3 > span,
+.week-2:has(#a-d4:checked):has(#b-d4:checked) .both-4 > span,
+.week-2:has(#a-d5:checked):has(#b-d5:checked) .both-5 > span,
+.week-2:has(#a-d6:checked):has(#b-d6:checked) .both-6 > span,
+.week-3:has(#a-d0:checked):has(#b-d0:checked):has(#c-d0:checked) .both-0 > span,
+.week-3:has(#a-d1:checked):has(#b-d1:checked):has(#c-d1:checked) .both-1 > span,
+.week-3:has(#a-d2:checked):has(#b-d2:checked):has(#c-d2:checked) .both-2 > span,
+.week-3:has(#a-d3:checked):has(#b-d3:checked):has(#c-d3:checked) .both-3 > span,
+.week-3:has(#a-d4:checked):has(#b-d4:checked):has(#c-d4:checked) .both-4 > span,
+.week-3:has(#a-d5:checked):has(#b-d5:checked):has(#c-d5:checked) .both-5 > span,
+.week-3:has(#a-d6:checked):has(#b-d6:checked):has(#c-d6:checked) .both-6 > span,
+.week-4:has(#a-d0:checked):has(#b-d0:checked):has(#c-d0:checked):has(#d-d0:checked) .both-0 > span,
+.week-4:has(#a-d1:checked):has(#b-d1:checked):has(#c-d1:checked):has(#d-d1:checked) .both-1 > span,
+.week-4:has(#a-d2:checked):has(#b-d2:checked):has(#c-d2:checked):has(#d-d2:checked) .both-2 > span,
+.week-4:has(#a-d3:checked):has(#b-d3:checked):has(#c-d3:checked):has(#d-d3:checked) .both-3 > span,
+.week-4:has(#a-d4:checked):has(#b-d4:checked):has(#c-d4:checked):has(#d-d4:checked) .both-4 > span,
+.week-4:has(#a-d5:checked):has(#b-d5:checked):has(#c-d5:checked):has(#d-d5:checked) .both-5 > span,
+.week-4:has(#a-d6:checked):has(#b-d6:checked):has(#c-d6:checked):has(#d-d6:checked) .both-6 > span { display: block; }
 
 /* one line per person, the two lines side by side where there is room */
 .spans { display: flex; flex-wrap: wrap; gap: 14px 40px; }
@@ -158,17 +190,18 @@ input:hover { border-color: var(--ink); }
 
 /* Sports: one control language, two meanings. Same cell, same person colours;
    the left pair picks one sport (✓), the right pair strikes sports out (✕). */
-.sport-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
-.sport-head, .sport-row { display: grid; grid-template-columns: minmax(0, 1fr) 46px 46px 10px 46px 46px; column-gap: 6px; align-items: center; }
+/* One column of rows per sport; each row holds n "✓" cells, a gap, then n "✕" cells. */
+.sport-cols { --cell: 46px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+.sport-cols:not(.sport-cols-2) { grid-template-columns: minmax(0, 640px); }
+.sport-head, .sport-row {
+  display: grid; column-gap: 6px; align-items: center;
+  grid-template-columns: minmax(0, 1fr) repeat(var(--n), var(--cell)) 10px repeat(var(--n), var(--cell));
+}
 .sport-head { row-gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
-.sh { grid-column: span 2; text-align: center; font-weight: 800; color: var(--ink); font-size: 14px; }
-.sh-skip { grid-column: 5 / span 2; }
+.sh { grid-column: span var(--n); text-align: center; font-weight: 800; color: var(--ink); font-size: 14px; }
 .sh-who { text-align: center; }
-.sport-head > span:nth-child(4) { grid-column: 1; }
-.sport-head > .sh-who:nth-child(7) { grid-column: 5; }
 .sport-row { min-height: 46px; padding: 4px 0; }
 .sport-row.is-all { border-bottom: 1px solid var(--rule); }
-.sport-row > :nth-child(4) { grid-column: 5; }
 .sport-name { font-size: 15px; line-height: 1.3; }
 .is-all .sport-name { font-weight: 600; }
 .sport-row:has(.want input:checked:not([value=""])) .sport-name { font-weight: 800; }
@@ -185,6 +218,8 @@ input:hover { border-color: var(--ink); }
 .skip input:checked + span .mark::before { content: "✕"; }
 .cell-a input:checked + span { background-color: var(--court); border-color: var(--court); color: #fff; }
 .cell-b input:checked + span { background-color: var(--line); border-color: var(--ink); color: var(--ink); }
+.cell-c input:checked + span { background-color: var(--hard); border-color: var(--hard); color: #fff; }
+.cell-d input:checked + span { background-color: var(--maple); border-color: var(--ink); color: var(--ink); }
 .sheet-submit { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-top: 44px; padding-top: 28px; border-top: 1px solid var(--rule); }
 
 /* ---------- results ---------- */
@@ -205,8 +240,8 @@ input:hover { border-color: var(--ink); }
 .answer-body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 40px; align-items: start; }
 
 /* the week board: a court floor with white lines */
-.board { background: var(--floor); padding: 4px 12px 14px 4px; }
-.board-head, .board-body { display: grid; grid-template-columns: 40px repeat(7, minmax(0, 1fr)); }
+.board { --rail: 40px; --days: repeat(7, minmax(0, 1fr)); --pad: 4px; --gap: 8px; background: var(--floor); padding: 4px 12px 14px 4px; }
+.board-head, .board-body { display: grid; grid-template-columns: var(--rail) var(--days); }
 .day-head { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 52px; padding-bottom: 6px; font-size: 16px; font-weight: 600; color: var(--muted); }
 .day-head small { font-size: 11px; font-weight: 800; line-height: 1.2; }
 .day-head.is-common { color: var(--ink); font-weight: 800; box-shadow: inset 0 -4px 0 var(--ink); }
@@ -224,16 +259,28 @@ input:hover { border-color: var(--ink); }
 }
 .block b { font-size: 14px; font-weight: 800; }
 .window { background: rgba(255, 255, 255, 0.78); }
-.window-a, .block-a { left: 4px; right: calc(50% + 5px); }
-.window-b, .block-b { left: calc(50% + 5px); right: 4px; }
+/* lane i of n: equal slices of the column, a gap between neighbours */
+.lane {
+  left: calc(var(--pad) + var(--lane) * (100% - 2 * var(--pad)) / var(--lanes) + var(--gap) / 2);
+  width: calc((100% - 2 * var(--pad)) / var(--lanes) - var(--gap));
+}
 .block-a { background: var(--court); color: #fff; }
 .block-b { background: var(--line); color: var(--ink); }
-.seam { left: calc(50% - 5px); width: 10px; background: var(--seam); }
+.block-c { background: var(--hard); color: #fff; }
+.block-d { background: var(--maple); color: var(--ink); }
+/* the shared minutes: one striped mat under every lane, showing in the gaps */
+.seam { left: var(--pad); right: var(--pad); background: var(--seam); }
+.lanes-4 { --gap: 6px; }
+/* With 3–4 people the days nobody shares are narrow: keep the mark, drop the start time. */
+.lanes-3 .col:not(.is-common), .lanes-4 .col:not(.is-common) { --gap: 3px; --pad: 2px; }
+.lanes-3 .col:not(.is-common) .block-time, .lanes-4 .col:not(.is-common) .block-time { display: none; }
+.lanes-3 .col:not(.is-common) .block, .lanes-4 .col:not(.is-common) .block { padding: 0; }
 .board-key { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 14px 0 0 40px; font-size: 13px; color: var(--muted); }
 .board-key > span { display: inline-flex; align-items: center; gap: 8px; }
 .board-key .who { width: 20px; height: 20px; font-size: 11px; }
 .key-seam { display: inline-block; width: 10px; height: 20px; background: var(--seam); }
 .key-window { display: inline-block; width: 20px; height: 20px; background: #fff; }
+.board-key .key-order { flex-basis: 100%; }
 
 .answer-side { display: grid; gap: 20px; }
 .answer-side .button { width: 100%; }
@@ -360,20 +407,28 @@ tbody th { width: 38%; font-weight: 400; color: var(--muted); }
   .span { flex: 1; }
   .span select { flex: 1; width: auto; min-width: 0; font-size: 20px; }
   .span-line { width: 100%; }
-  .sport-head, .sport-row { grid-template-columns: minmax(0, 1fr) 42px 42px 6px 42px 42px; column-gap: 4px; }
   .witness { padding: 16px; margin-inline: -4px; }
   .answer-head .lead { font-size: 17px; }
   .sheet-submit .button { width: 100%; }
   .answer-side { grid-template-columns: minmax(0, 1fr); }
   .board { margin-inline: -20px; padding: 4px 8px 12px 0; }
-  .board-head, .board-body { grid-template-columns: 30px repeat(7, minmax(0, 1fr)); }
+  .board { --rail: 30px; --pad: 2px; --gap: 5px; }
+  .lanes-3, .lanes-4 { --gap: 3px; }
   .board-body { background-position: 30px 0; background-size: calc(100% - 30px) 100%; }
   .rail span { padding-right: 5px; font-size: 11px; }
   .day-head { font-size: 15px; }
-  .window-a, .block-a { left: 2px; right: calc(50% + 3px); }
-  .window-b, .block-b { left: calc(50% + 3px); right: 2px; }
-  .seam { left: calc(50% - 3px); width: 6px; }
+  .block { padding: 1px; }
   .block b { font-size: 12px; }
+  .lanes-4 .block b { font-size: 11px; }
+  .lanes-3 .col:not(.is-common), .lanes-4 .col:not(.is-common) { --gap: 2px; --pad: 1px; }
+  .lanes-3 .col:not(.is-common) .block b, .lanes-4 .col:not(.is-common) .block b { font-size: 10px; letter-spacing: -0.05em; }
+  .sport-cols { --cell: 42px; }
+  .sport-cols-3 { --cell: 36px; }
+  .sport-cols-4 { --cell: 30px; }
+  .sport-cols-3 .sport-head, .sport-cols-3 .sport-row,
+  .sport-cols-4 .sport-head, .sport-cols-4 .sport-row { column-gap: 3px; }
+  .sport-cols-4 .cell > span { height: 34px; font-size: 12px; }
+  .sport-cols-4 .sport-name { font-size: 14px; }
   .block-time { display: none; }
   .board-key { padding-left: 12px; }
   .course-time, .course-line, .fine { margin-left: 0; }

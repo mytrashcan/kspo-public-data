@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% from "cards.html" import WHO, board as week_board, pair_detail, pair_row with context %}
+{% from "cards.html" import board as week_board, group_detail, group_row with context %}
+{% set who = roster(people|length) %}
+{% set words = count_words[people|length] %}
 {% block title %}같이 갈 수 있는 날 | 함께 운동 시간표{% endblock %}
 
 {% macro sport_phrase(person) -%}
@@ -12,10 +14,10 @@
 <section class="query" aria-labelledby="query-title">
   <h2 id="query-title" class="query-title">이렇게 정하고 찾았어요</h2>
   <ul class="query-lines">
-    {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
+    {% for person in people %}{% set p = who[loop.index0] %}
     <li>
-      <span class="who who-{{ p }}" aria-hidden="true">{{ WHO[p].mark }}</span>
-      <p>{{ WHO[p].topic }} <b>{{ days|select('in', person.days)|join(', ') or '요일 미정' }} {{ person.start|clock }}–{{ person.end|clock }}</b>에 돼요.
+      <span class="who who-{{ p.key }}" aria-hidden="true">{{ p.mark }}</span>
+      <p>{{ p.topic }} <b>{{ days|select('in', person.days)|join(', ') or '요일 미정' }} {{ person.start|clock }}–{{ person.end|clock }}</b>에 돼요.
         {% if person.max_monthly_fee is none %}회비는 상관없고{% else %}회비는 한 달 {{ person.max_monthly_fee|money }}원까지{% endif %}, {{ sport_phrase(person) }}.</p>
     </li>
     {% endfor %}
@@ -23,7 +25,7 @@
   <div class="query-actions">
     <a class="button" href="{{ edit_url }}">조건 바꾸기</a>
     <details class="share">
-      <summary>짝에게 보낼 링크</summary>
+      <summary>{{ '짝에게' if people|length == 2 else '같이 갈 사람들에게' }} 보낼 링크</summary>
       <div class="share-body">
         <input type="text" readonly value="{{ share }}" aria-label="공유 URL">
         <a href="{{ share }}">이 링크로 같은 결과 열기</a>
@@ -35,20 +37,19 @@
 
 {% block content %}
 {% if board %}
-{% set first, second = ('a', 'b') if selected.a.start <= selected.b.start else ('b', 'a') %}
 <section class="answer" aria-labelledby="answer-title">
   <header class="answer-head">
-    <h1 id="answer-title">{{ selected.days|join(', ') }}요일 {{ [selected.a.start, selected.b.start]|min|clock }}에 같이 가서, {{ selected.a.end|clock }}에 같이 나와요</h1>
-    <p class="lead">나는 {{ selected.a.sport }}, 짝은 {{ selected.b.sport }}. 두 수업이 {{ selected.overlap_minutes }}분 겹쳐요. 둘이 합쳐 한 달 {{ selected.total_monthly_fee|money }}원이에요.</p>
+    <h1 id="answer-title">{{ selected.days|join(', ') }}요일 {{ selected.first_start|clock }}에 같이 가서, {{ selected.end|clock }}에 같이 나와요</h1>
+    <p class="lead">{% for course in selected.courses %}{{ who[loop.index0].topic }} {{ course.sport }}{{ ', ' if not loop.last else '.' }}{% endfor %} {{ words[1] }} 수업이 {{ selected.overlap_minutes }}분 겹쳐요. {{ words[0] }}이 합쳐 한 달 {{ selected.total_monthly_fee|money }}원이에요.</p>
   </header>
   {{ conditions() }}
   <div class="answer-body">
     {{ week_board(board, selected) }}
     <div class="answer-side">
-      {{ pair_detail(selected) }}
-      <p class="total">둘이 합쳐 한 달 <strong>{{ selected.total_monthly_fee|money }}원</strong></p>
-      <p class="help">두 수업의 요일과 시간이 각자 된다고 한 범위 안에 들어오는 것까지 확인했어요. 나이·성별로 들을 수 있는지는 확인하지 않아요.</p>
-      <a class="button" href="/evidence?a_code={{ selected.a.code|urlencode }}&amp;b_code={{ selected.b.code|urlencode }}">원문 근거 보기</a>
+      {{ group_detail(selected) }}
+      <p class="total">{{ words[0] }}이 합쳐 한 달 <strong>{{ selected.total_monthly_fee|money }}원</strong></p>
+      <p class="help">{{ words[1] }} 수업의 요일과 시간이 각자 된다고 한 범위 안에 들어오는 것까지 확인했어요. 나이·성별로 들을 수 있는지는 확인하지 않아요.</p>
+      <a class="button" href="/evidence?{% for course in selected.courses %}{{ '&' if not loop.first }}{{ who[loop.index0].key }}_code={{ course.code|urlencode }}{% endfor %}">원문 근거 보기</a>
     </div>
   </div>
 </section>
@@ -57,7 +58,7 @@
   <header class="answer-head">
     <h1 id="answer-title">지금 조건으로는 같이 갈 수 있는 날이 없어요</h1>
     {% if result.fully_impossible %}
-    <p class="lead">요일, 시간, 회비, 종목을 모두 풀어도 이 데이터에는 두 사람이 같은 날 각자 들을 수 있는 수업 짝이 없어요.</p>
+    <p class="lead">요일, 시간, 회비, 종목을 모두 풀어도 이 데이터에는 {{ words[1] }} 사람이 같은 날 각자 들을 수 있는 수업 조합이 없어요.</p>
     {% else %}
     <p class="lead">조건을 하나씩 바꿔 실제 강좌로 다시 계산한 최소 변경 제안이에요. 하나를 골라 다시 보면 돼요.</p>
     {% endif %}
@@ -73,8 +74,9 @@
       <div class="suggestion-main">
         <h3 class="sr">제안 {{ loop.index }}</h3>
         <ul class="changes">
-          {% for change in suggestion.changes %}{% set who, _, text = change.partition(': ') %}
-          <li>{% if who in ('A', 'B') and text %}<span class="who who-{{ who|lower }}" aria-hidden="true">{{ WHO[who|lower].mark }}</span><span><span class="sr">{{ WHO[who|lower].mark }}: </span>{{ text }}</span>{% else %}<span>{{ change }}</span>{% endif %}</li>
+          {% for change in suggestion.changes %}{% set label, _, text = change.partition(': ') %}
+          {% set index = 'ABCD'.find(label) if label|length == 1 else -1 %}
+          <li>{% if 0 <= index < people|length and text %}{% set p = who[index] %}<span class="who who-{{ p.key }}" aria-hidden="true">{{ p.mark }}</span><span><span class="sr">{{ p.name }}: </span>{{ text }}</span>{% else %}<span>{{ change }}</span>{% endif %}</li>
           {% endfor %}
         </ul>
         {% if suggestion.changes|length > 1 %}<p class="help">위 변경을 모두 해야 같이 갈 수 있어요.</p>{% endif %}
@@ -88,9 +90,9 @@
         <a class="button primary" href="{{ plan_url(suggestion.people) }}">변경한 조건으로 다시 보기</a>
       </div>
       <div class="witness">
-        <p class="witness-title">이렇게 바꾸면 듣게 되는 두 수업</p>
-        {{ pair_detail(suggestion.witness) }}
-        <p class="witness-total">둘이 합쳐 한 달 <strong>{{ suggestion.witness.total_monthly_fee|money }}원</strong></p>
+        <p class="witness-title">이렇게 바꾸면 듣게 되는 {{ words[1] }} 수업</p>
+        {{ group_detail(suggestion.witness) }}
+        <p class="witness-total">{{ words[0] }}이 합쳐 한 달 <strong>{{ suggestion.witness.total_monthly_fee|money }}원</strong></p>
       </div>
     </li>
     {% endfor %}
@@ -98,7 +100,7 @@
   <details class="method">
     <summary>최소 변경은 어떻게 정하나요?</summary>
     <p>요일은 추가 개수, 예산은 증액, 시간은 확장 분, 종목은 변경 인원으로 최소화해요. 한 유형만 바꿔 성립하는 방법이 없으면 여러 변경을 함께 제시해요.</p>
-    <p>변경 항목 수, 추가 월 회비, 추가 요일 수, 시간 확장 분 순으로 제안해요. 회비 증액은 지금 적은 상한에서 늘리는 금액이고, 시간 확장은 두 사람의 확장 분 합계예요.</p>
+    <p>변경 항목 수, 추가 월 회비, 추가 요일 수, 시간 확장 분 순으로 제안해요. 회비 증액은 지금 적은 상한에서 늘리는 금액이고, 시간 확장은 {{ words[1] }} 사람의 확장 분을 더한 값이에요.</p>
   </details>
   {% endif %}
 </section>
@@ -107,11 +109,11 @@
 <div class="lists">
   <section class="list" id="simultaneous" aria-labelledby="simultaneous-title">
     <h2 id="simultaneous-title">같은 시간에 각자 <span>{{ result.simultaneous|length }}개</span></h2>
-    <p class="help">같은 요일, 마치는 시각이 같고 수업 시간이 겹쳐요. 둘이 합친 회비가 낮은 순, 겹치는 시간이 긴 순이에요.</p>
+    <p class="help">같은 요일, 마치는 시각이 같고 수업 시간이 겹쳐요. 한 사람에 한 수업씩, 모두 다른 수업이에요. {{ words[0] }}이 합친 회비가 낮은 순, 겹치는 시간이 긴 순이에요.</p>
     {% if simultaneous_rows %}
-    <ol class="picks">{% for row in simultaneous_rows %}{{ pair_row(row) }}{% endfor %}</ol>
+    <ol class="picks">{% for row in simultaneous_rows %}{{ group_row(row) }}{% endfor %}</ol>
     {% if result.simultaneous|length > 20 %}<p class="help">상위 20개만 보여요. 조건을 좁히면 다른 조합을 볼 수 있어요.</p>{% endif %}
-    {% else %}<p class="none">지금 조건으로는 같은 시간에 들을 수 있는 짝이 없어요.</p>{% endif %}
+    {% else %}<p class="none">지금 조건으로는 같은 시간에 들을 수 있는 {{ '짝이' if people|length == 2 else '조합이' }} 없어요.</p>{% endif %}
   </section>
 </div>
 {% endblock %}

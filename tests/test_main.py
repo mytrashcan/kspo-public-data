@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.ingest import FIXTURE, ingest
-from app.main import DEMO, DISCLAIMER, app, create_app, plan_url
+from app.main import DEMO, DEMO_GROUP, DISCLAIMER, app, create_app, plan_url
 
 
 @pytest.fixture
@@ -124,7 +124,8 @@ def test_user_input_is_escaped(client: TestClient) -> None:
     assert "&lt;script&gt;" in response.text
 
 
-@pytest.mark.parametrize("url", ["/", "/?example=1", plan_url(DEMO), "/evidence", "/evidence?a_code=1029879&b_code=21832", "/plan?a_budget=-1", "/plan"])
+@pytest.mark.parametrize("url", ["/", "/?example=1", "/?example=3", plan_url(DEMO), plan_url(DEMO_GROUP),
+                                 "/evidence?a_code=1022624&b_code=21365&c_code=1016477", "/evidence", "/evidence?a_code=1029879&b_code=21832", "/plan?a_budget=-1", "/plan"])
 def test_no_unsupported_claims_except_required_disclaimer(client: TestClient, url: str) -> None:
     page = client.get(url).text
     assert page.count(DISCLAIMER) == 1
@@ -171,3 +172,58 @@ def test_runtime_loader_uses_ingested_database(tmp_path: Path) -> None:
         assert runtime.get("/meta").json()["as_of_month"] == "2026-11"
         assert runtime.get("/meta").json()["course_count"] == 2
         assert "데이터 기준 2026-11" in runtime.get(plan_url(DEMO)).text
+
+
+def submit(client: TestClient, page: str, button: tuple[str, str] | None = None, action: str = "/plan"):
+    parser = FormValues()
+    parser.feed(page)
+    from urllib.parse import urlencode
+    values = [pair for pair in parser.values if pair[0] != "people"] + ([button] if button else [])
+    return client.get(action + "?" + urlencode(values))
+
+
+def test_three_person_result_page(client: TestClient) -> None:
+    url = plan_url(DEMO_GROUP)
+    assert "c_days" in url and "d_" not in url
+    page = client.get(url).text
+    for evidence in ("화, 목요일 19:00에 같이 가서, 21:50에 같이 나와요",
+                     "나는 검도, 2번은 배드민턴, 3번은 스쿼시.", "셋이 합쳐 한 달 197,000원이에요",
+                     "70,000원", "65,000원", "62,000원", "1022624", "21365", "1016477",
+                     "a_code=1022624&amp;b_code=21365&amp;c_code=1016477", "who-c", "--lanes: 3"):
+        assert evidence in page
+    assert "짝" not in page.split('<main')[1].split('</main>')[0]
+    evidence_page = client.get("/evidence?a_code=1022624&b_code=21365&c_code=1016477")
+    assert evidence_page.status_code == 200
+    assert "3번의 수업" in evidence_page.text
+    assert client.get("/evidence?a_code=1022624&b_code=21365&c_code=21365").status_code == 400
+    assert client.get("/evidence?a_code=1022624&c_code=21365").status_code == 400
+    assert client.get("/evidence?a_code=1022624&b_code=21365&c_code=1029879").status_code == 422
+
+
+def test_add_person_keeps_entered_values_without_script(client: TestClient) -> None:
+    form = client.get("/?example=1").text
+    assert 'formaction="/" name="people" value="3"' in form
+    # 기본 제출 버튼이 맨 앞이어야 Enter가 사람을 더하지 않는다
+    assert form.index('class="default-submit"') < form.index('name="people"')
+    added = submit(client, form, ("people", "3"), action="/")
+    assert added.status_code == 200
+    assert 'name="c_days"' in added.text and 'name="d_days"' not in added.text
+    assert 'name="b_budget" value="70000"' in added.text
+    assert 'name="a_budget" value="100000"' in added.text
+    four = submit(client, added.text, ("people", "4"), action="/")
+    assert 'name="d_days"' in four.text and "한 사람 더" not in four.text
+    # 마지막 사람을 빼면 되돌리기 링크로 적은 값을 다시 불러올 수 있다
+    removed = submit(client, four.text, ("people", "3"), action="/")
+    assert 'name="d_days"' not in removed.text and "4번을 뺐어요" in removed.text
+    restore = unescape(removed.text.split("되돌리기")[0].rsplit('href="', 1)[1].split('"', 1)[0])
+    assert 'name="d_days"' in client.get(restore).text
+    result = submit(client, added.text)
+    assert result.status_code == 200 and "셋이" in result.text
+
+
+def test_two_person_urls_unchanged(client: TestClient) -> None:
+    url = plan_url(DEMO)
+    assert "c_" not in url
+    page = client.get(url).text
+    assert "나는 TRX, 짝은 농구." in page and "둘이 합쳐" in page and "--lanes: 2" in page
+    assert client.get(url + "&pick=21832:1029879").status_code == 200
