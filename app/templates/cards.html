@@ -1,36 +1,48 @@
-{% macro card(pair, source_url) %}
-<article class="pair-sheet" aria-label="{{ pair.a.name }} 및 {{ pair.b.name }} 조합">
-  <header class="pair-top">
-    <p>공통 요일 <strong>{{ pair.days|join(', ') }}</strong></p>
-    <p>합계 월 <strong>{{ pair.total_monthly_fee|money }}원</strong></p>
-  </header>
-  <div class="pair-body">
-    {% for course in (pair.a, pair.b) %}
-    <div class="course-row">
-      <span class="person-mark" aria-label="{{ 'A' if loop.first else 'B' }}의 강좌">{{ 'A' if loop.first else 'B' }}</span>
-      <div class="course-schedule">
-        <p class="course-time">{{ course.start|clock }}–{{ course.end|clock }}</p>
-        <p class="course-days">{{ course.days|join(', ') }}</p>
-      </div>
-      <div class="course-info">
-        <h3>{{ course.name }}</h3>
-        <p>{{ course.sport }}</p>
-        <p class="audience">강습반 원문: {{ course.audience or '(빈 값)' }}</p>
-        <details class="course-reference">
-          <summary>강좌번호 {{ course.code }}</summary>
-          <dl>
-            <div><dt>센터</dt><dd>{{ course.center }}</dd></div>
-            <div><dt>데이터 기준</dt><dd>{{ course.month }}</dd></div>
-          </dl>
-        </details>
-      </div>
-      <p class="course-fee"><span>월 회비</span><strong>{{ course.monthly_fee|money }}원</strong></p>
-    </div>
-    {% endfor %}
+{% macro board(grid, pair) %}
+<div class="board" aria-label="선택한 조합의 주간 시간표">
+  <div class="board-head">
+    <span class="rail-head" aria-hidden="true"></span>
+    {% for day in days %}<span class="day-head{% if day in pair.days %} is-common{% endif %}">{{ day }}</span>{% endfor %}
   </div>
-  <footer class="pair-bottom">
-    <p>{% if pair.simultaneous %}겹치는 시간 <strong>{{ pair.overlap_minutes }}분</strong>{% else %}두 수업 사이 <strong>{{ pair.gap_minutes }}분</strong>{% endif %}</p>
-    <a href="/evidence?a_code={{ pair.a.code|urlencode }}&amp;b_code={{ pair.b.code|urlencode }}">원문 근거 보기</a>
-  </footer>
-</article>
+  <div class="board-body" style="height: {{ grid.height }}px">
+    <div class="rail" aria-hidden="true">{% for hour in grid.hours %}<span>{{ hour }}</span>{% endfor %}</div>
+    <div class="canvas">
+      <div class="day-lines" aria-hidden="true">{% for day in days %}<i></i>{% endfor %}</div>
+      {% for block in grid.blocks %}
+      <div class="block block-{{ block.person | lower }}" style="left: {{ block.day_index * (100 / 7) }}%; width: {{ 100 / 7 }}%; top: {{ block.top }}px; height: {{ block.height }}px">
+        <span class="block-person">{{ block.person }}</span>
+        <span class="block-name">{{ block.name }}</span>
+        <span class="block-time">{{ block.time }}</span>
+      </div>
+      {% endfor %}
+      {% for overlap in grid.overlaps %}
+      <div class="overlap" style="left: {{ overlap.day_index * (100 / 7) }}%; width: {{ 100 / 7 }}%; top: {{ overlap.top }}px; height: {{ overlap.height }}px" aria-hidden="true"></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro pair_detail(pair) %}
+<dl class="pair-detail">
+  {% for course in (pair.a, pair.b) %}
+  <div>
+    <dt><span class="mark mark-{{ 'a' if loop.first else 'b' }}">{{ 'A' if loop.first else 'B' }}</span> {{ course.name }}</dt>
+    <dd>{{ course.sport }} · {{ course.start | clock }}–{{ course.end | clock }} · {{ course.days | join(', ') }}</dd>
+    <dd>월 회비 {{ course.monthly_fee | money }}원 · 강습반 원문: {{ course.audience or '(빈 값)' }}</dd>
+    <dd class="pair-ref">강좌번호 {{ course.code }} · {{ course.center }} · 데이터 기준 {{ course.month }}</dd>
+  </div>
+  {% endfor %}
+</dl>
+{% endmacro %}
+
+{% macro pair_row(row) %}
+<li class="pick{% if row.selected %} is-selected{% endif %}">
+  <a href="{{ row.href }}"{% if row.selected %} aria-current="true"{% endif %}>
+    <span class="pick-time">{{ row.pair.a.start | clock }}–{{ row.pair.b.end | clock }}</span>
+    <span class="pick-names">{{ row.pair.a.name }}<em>+</em>{{ row.pair.b.name }}</span>
+    <span class="pick-meta">{% if row.pair.simultaneous %}겹침 {{ row.pair.overlap_minutes }}분{% else %}간격 {{ row.pair.gap_minutes }}분{% endif %}</span>
+    <span class="pick-fee">{{ row.pair.total_monthly_fee | money }}원</span>
+  </a>
+</li>
 {% endmacro %}

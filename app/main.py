@@ -43,6 +43,74 @@ def plan_url(people: tuple[Person, Person]) -> str:
 
 templates.env.globals["plan_url"] = plan_url
 
+GRID_START_HOUR = 6
+GRID_END_HOUR = 24
+GRID_ROW_H = 44
+GRID_HOURS = tuple(f"{hour:02d}" for hour in range(GRID_START_HOUR, GRID_END_HOUR))
+
+
+def _grid_offset(minute: int) -> int:
+    return max(0, (minute - GRID_START_HOUR * 60) * GRID_ROW_H // 60)
+
+
+def build_board(pair) -> dict[str, object]:
+    """Place a pair's classes on a week grid: columns are weekdays, rows are hours."""
+    blocks = []
+    for person, course in (("A", pair.a), ("B", pair.b)):
+        for day in course.days:
+            if day not in DAYS:
+                continue
+            top = _grid_offset(course.start)
+            blocks.append({
+                "person": person,
+                "day_index": DAYS.index(day),
+                "top": top,
+                "height": max(20, _grid_offset(course.end) - top),
+                "name": course.name,
+                "sport": course.sport,
+                "time": f"{format_clock(course.start)}–{format_clock(course.end)}",
+                "code": course.code,
+                "audience": course.audience,
+                "fee": course.monthly_fee,
+            })
+    overlaps = []
+    for day in pair.days:
+        start, end = max(pair.a.start, pair.b.start), min(pair.a.end, pair.b.end)
+        if end > start:
+            top = _grid_offset(start)
+            overlaps.append({"day_index": DAYS.index(day), "top": top, "height": _grid_offset(end) - top})
+    return {
+        "blocks": blocks,
+        "overlaps": overlaps,
+        "hours": GRID_HOURS,
+        "row_h": GRID_ROW_H,
+        "height": (GRID_END_HOUR - GRID_START_HOUR) * GRID_ROW_H,
+        "width": 100,
+    }
+
+
+def select_pair(result, pick: str):
+    """Pick the combination shown on the board; falls back to the cheapest result."""
+    pairs = (*result.simultaneous, *result.consecutive)
+    if pick:
+        left, _, right = pick.partition(":")
+        for pair in pairs:
+            if {left, right} == {pair.a.code, pair.b.code}:
+                return pair
+    return pairs[0] if pairs else None
+
+
+def pair_rows(pairs, base_query: str, selected) -> list[dict[str, object]]:
+    rows = []
+    for pair in pairs[:20]:
+        token = f"{pair.a.code}:{pair.b.code}"
+        rows.append({
+            "pair": pair,
+            "href": f"/plan?{base_query}&pick={token}" if base_query else f"/plan?pick={token}",
+            "selected": pair is selected,
+        })
+    return rows
+
 
 def read_people(request: Request) -> tuple[Person, Person]:
     people = []
@@ -100,8 +168,20 @@ def create_app(database: Path | None = None) -> FastAPI:
             return render(request, "error.html", error=str(error), status_code=422)
         result = plan(request.app.state.courses, *people)
         share = str(request.base_url).rstrip("/") + plan_url(people)
-        return render(request, "plan.html", people=people, result=result, share=share,
-                      edit_url="/" + plan_url(people).removeprefix("/plan"))
+        selected = select_pair(result, request.query_params.get("pick", ""))
+        base_query = plan_url(people).removeprefix("/plan?").removeprefix("?")
+        return render(
+            request,
+            "plan.html",
+            people=people,
+            result=result,
+            share=share,
+            edit_url="/" + plan_url(people).removeprefix("/plan"),
+            simultaneous_rows=pair_rows(result.simultaneous, base_query, selected),
+            consecutive_rows=pair_rows(result.consecutive, base_query, selected),
+            board=build_board(selected) if selected else None,
+            selected=selected,
+        )
 
     @application.get("/evidence", response_class=HTMLResponse)
     def evidence(request: Request, a_code: str | None = None, b_code: str | None = None) -> HTMLResponse:
