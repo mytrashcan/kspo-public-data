@@ -1,0 +1,36 @@
+# Python / virtual environments
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+
+# Local secrets (keep the empty template)
+.env
+.env.*
+!.env.example
+
+# Test / coverage / tooling caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+
+# macOS / editors
+.DS_Store
+._*
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
