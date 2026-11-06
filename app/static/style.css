@@ -125,7 +125,7 @@ select[multiple] option { padding: 3px 6px; }
 .page-heading h1 { margin-bottom: 10px; }
 .page-heading > .button { flex-shrink: 0; }
 
-.plan-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 40px; align-items: start; }
+.plan-layout { display: grid; grid-template-columns: minmax(0, 1fr) 520px; gap: 40px; align-items: start; }
 .plan-main { min-width: 0; }
 
 .section-heading { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--ink); margin-bottom: 12px; }
@@ -217,12 +217,12 @@ summary { cursor: pointer; font-size: 13.5px; color: var(--blue); padding: 10px 
 .block {
   position: absolute; z-index: 2; overflow: hidden;
   display: flex; flex-direction: column; justify-content: center; gap: 1px;
-  padding: 3px 5px; color: #fff; font-size: 11.5px; line-height: 1.25;
+  padding: 3px 5px; color: #fff; font-size: 11px; line-height: 1.2;
 }
 .block-a { background: var(--blue); }
 .block-b { background: var(--brick); }
 .block-person { display: none; }
-.block-name { font-weight: 700; }
+.block-name { font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .block-time { opacity: 0.85; font-size: 10.5px; }
 
 .overlap {
@@ -272,7 +272,7 @@ tbody th { font-weight: 500; color: var(--muted); }
 
 /* ---------- responsive ---------- */
 @media (max-width: 1040px) {
-  .plan-layout { grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; }
+  .plan-layout { grid-template-columns: minmax(0, 1fr) 440px; gap: 28px; }
   .pick > a { grid-template-columns: 88px minmax(0, 1fr) 76px 88px; gap: 10px; }
 }
 
