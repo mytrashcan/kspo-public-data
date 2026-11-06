@@ -32,7 +32,9 @@
       {% for person in people %}{% set p = 'a' if loop.first else 'b' %}
       <div class="line">
         <span class="who who-{{ p }}" aria-hidden="true">{{ p|upper }}</span>
-        <label class="inline-field"><input type="time" name="{{ p }}_start" value="{{ person.start|clock }}" required aria-label="{{ p|upper }} 시작 시각"><span>부터</span></label>
+        <label class="inline-field"><select name="{{ p }}_start" aria-label="{{ p|upper }} 시작 시각">
+          {% for minute in range(0, 1440) %}{% if minute % 10 == 0 or minute == person.start %}<option value="{{ minute|clock }}" {% if minute == person.start %}selected{% endif %}>{{ minute|clock }}</option>{% endif %}{% endfor %}
+        </select><span>부터</span></label>
         <label class="inline-field"><select name="{{ p }}_end" aria-label="{{ p|upper }} 종료 시각">
           {% for minute in range(1, 1441) %}{% if minute % 10 == 0 or minute == person.end %}<option value="{{ minute|clock }}" {% if minute == person.end %}selected{% endif %}>{{ minute|clock }}</option>{% endif %}{% endfor %}
         </select><span>까지</span></label>
