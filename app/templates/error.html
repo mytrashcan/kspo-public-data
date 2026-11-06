@@ -1,1 +1,10 @@
-{% extends "base.html" %}{% block content %}<h1>조건을 확인해 주세요.</h1><p class="empty">{{ error }}</p><a class="button secondary" href="/">다시 입력하기</a>{% endblock %}
+{% extends "base.html" %}
+{% block title %}조건 확인 | 함께 운동 시간표{% endblock %}
+{% block content %}
+<section class="error-panel">
+  <h1>조건을 확인해 주세요.</h1>
+  <p class="error-reason">{{ error }}</p>
+  <p>입력한 조건이나 강좌번호를 확인한 뒤 다시 찾아보세요.</p>
+  <a class="button primary" href="/">다시 입력하기</a>
+</section>
+{% endblock %}
