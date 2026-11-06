@@ -96,6 +96,28 @@ label small { font-size: 13px; color: var(--muted); font-weight: 400; margin-lef
 .days label:hover > span { border-color: var(--blue); }
 .days input:focus-visible + span { outline: 3px solid var(--blue); outline-offset: 2px; }
 .time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
+.sport-picker { margin: 20px 0 0; padding: 0; border: 0; min-width: 0; }
+.sport-picker legend { padding: 0; margin-bottom: 8px; font-size: 14.5px; font-weight: 600; }
+.sport-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 3px; }
+.sport-chip { position: relative; display: block; font-weight: 500; }
+.sport-chip input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.sport-chip > span {
+  display: block; padding: 7px 6px; text-align: center;
+  border: 1px solid var(--line-strong); background: var(--paper);
+  font-size: 13px; line-height: 1.25; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sport-chip:hover > span { border-color: var(--muted); }
+.sport-chip input:checked + span {
+  background: var(--paper); border-color: var(--brick); color: var(--brick);
+  text-decoration: line-through; text-decoration-thickness: 1px;
+}
+.sport-chip input:checked + span::before {
+  content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 4px;
+  vertical-align: 2px; background: var(--brick);
+}
+.sport-chip input:focus-visible + span { outline: 3px solid var(--blue); outline-offset: 2px; }
+
 input[type="time"], input[type="number"], input[type="text"], select {
   display: block; width: 100%; min-width: 0; height: 46px; padding: 9px 11px; margin-top: 7px;
   border: 1px solid var(--line-strong); background: var(--paper); color: var(--ink);
