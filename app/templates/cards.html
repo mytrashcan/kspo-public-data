@@ -1,8 +1,17 @@
 {% macro card(pair, source_url) %}
 <article class="pair-card">
 <div class="pair-top"><span class="badge">공통 요일 {{ pair.days|join('·') }}</span><strong>합계 월 {{ pair.total_monthly_fee|money }}원</strong></div>
+<div class="pair-body">
 {% for course in (pair.a, pair.b) %}
-<div class="course"><span class="avatar">{{ 'A' if loop.first else 'B' }}</span><div><h3>{{ course.name }}</h3><p>{{ course.sport }} · {{ course.days|join('·') }} {{ course.start|clock }}–{{ course.end|clock }}</p><p><strong>월 회비 {{ course.monthly_fee|money }}원</strong> · 강습반 원문: {{ course.audience or '(빈 값)' }}</p><p class="hint">{{ course.center }} · 강좌번호 {{ course.code }} · 데이터 기준 {{ course.month }}</p></div></div>
+<div class="course"><span class="avatar">{{ 'A' if loop.first else 'B' }}</span><div>
+<p class="course-time">{{ course.start|clock }}–{{ course.end|clock }} · {{ course.days|join('·') }}</p>
+<h3>{{ course.name }}</h3>
+<p>{{ course.sport }}</p>
+<p><span class="fee">월 회비 {{ course.monthly_fee|money }}원</span> · 강습반 원문: {{ course.audience or '(빈 값)' }}</p>
+<p class="hint">{{ course.center }} · 강좌번호 {{ course.code }} · 데이터 기준 {{ course.month }}</p>
+</div></div>
+{% if loop.first %}<div class="pair-divider" aria-hidden="true">{% if pair.simultaneous %}겹침{% else %}간격{% endif %}</div>{% endif %}
 {% endfor %}
+</div>
 <div class="pair-bottom"><span>{% if pair.simultaneous %}겹치는 시간 {{ pair.overlap_minutes }}분{% else %}두 수업 사이 {{ pair.gap_minutes }}분{% endif %}</span><a href="/evidence?a_code={{ pair.a.code|urlencode }}&amp;b_code={{ pair.b.code|urlencode }}">원문 근거 보기 →</a></div>
 </article>{% endmacro %}

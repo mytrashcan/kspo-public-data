@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="hero"><p class="eyebrow">함께 가는 날, 나에게 맞는 운동</p><h1>같이 가서,<br>각자 운동할 수 있을까요?</h1><p>두 사람의 요일과 시간을 맞춰보고, 맞지 않는다면<br>무엇을 얼마나 바꾸면 되는지 확인하세요.</p></section>
+<section class="hero"><p class="eyebrow">함께 가는 날, 나에게 맞는 운동</p><h1>같이 가서,<br>각자 운동할 수 있을까요?</h1><p class="lede">두 사람의 요일과 시간을 맞춰보고, 맞지 않는다면<br>무엇을 얼마나 바꾸면 되는지 확인하세요.</p></section>
 <div class="section-heading"><h2>우리의 조건</h2><a class="button secondary" href="/?example=1">예시 채우기</a></div>
 <p class="hint">예시: A·B 모두 화·목 18:00–19:00, 예산은 각각 월 100,000원·70,000원.</p>
 <form action="/plan" method="get"><div class="people-grid">
 {% for person in people %}{% set prefix = 'a' if loop.index == 1 else 'b' %}
 <fieldset class="person-panel"><legend><span class="avatar">{{ prefix|upper }}</span> {{ prefix|upper }}의 운동 조건</legend>
-<fieldset class="day-picker"><legend>갈 수 있는 요일</legend><div class="days">
+<fieldset class="day-picker"><legend class="day-legend">갈 수 있는 요일</legend><div class="days">
 {% for day in days %}<label><input type="checkbox" name="{{ prefix }}_days" value="{{ day }}" {% if day in person.days %}checked{% endif %}><span>{{ day }}</span></label>{% endfor %}
 </div></fieldset>
 <div class="time-fields"><label>시작 시각<input type="time" name="{{ prefix }}_start" value="{{ person.start|clock }}" required></label><span>—</span><label>종료 시각<select name="{{ prefix }}_end">
