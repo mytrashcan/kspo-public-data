@@ -34,3 +34,9 @@ coverage.xml
 *.swp
 *.swo
 *~
+
+# Runtime database and local source files (only curated fixtures are versioned)
+var/
+*.sqlite3*
+*.csv
+!data/fixtures/*.csv

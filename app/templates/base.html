@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="ko">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>함께 운동 시간표</title><link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}"></head>
+<body>
+<header class="site-header"><a class="brand" href="/">함께 운동 시간표<span>일산스포츠센터</span></a><a href="/evidence">데이터 근거</a></header>
+<main>{% block content %}{% endblock %}</main>
+<footer>
+<p><strong>데이터 기준 {{ meta.as_of_month }}</strong> · 출처 <a href="{{ source_url }}" target="_blank" rel="noopener">data.go.kr {{ meta.dataset_id }}</a></p>
+<p class="disclaimer">{{ disclaimer }}</p>
+<p>금액은 원본의 금액 필드를 월 회비로 해석한 값입니다. 실제 운영 시간·요금·대상 조건은 센터에 확인해 주세요.</p>
+<p>강습반은 원문 그대로 표시합니다. 연령·성별 자격을 자동 판정하지 않습니다.</p>
+</footer></body></html>

@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% from "cards.html" import card %}
+{% block content %}
+<p class="eyebrow">우리의 운동 시간표</p><h1>함께 가는 방법을<br>찾아봤어요.</h1>
+<div class="conditions">{% for person in people %}<p><strong>{{ 'A' if loop.first else 'B' }}</strong> {{ days|select('in', person.days)|join('·') or '요일 없음' }} · {{ person.start|clock }}–{{ person.end|clock }} · 월 예산 {% if person.max_monthly_fee is none %}제한 없음{% else %}{{ person.max_monthly_fee|money }}원{% endif %} · 선호 {{ person.sport or '모든 종목' }}{% if person.excluded_sports %} · 제외 {{ person.excluded_sports|sort|join('·') }}{% endif %}</p>{% endfor %}</div>
+<div class="actions"><a class="button secondary" href="{{ edit_url }}">조건 수정</a><a class="button secondary" href="{{ share }}">같은 조건 공유 링크</a></div>
+<label class="share">공유 URL<input readonly value="{{ share }}" aria-label="공유 URL"></label>
+<p class="hint">모든 강좌 요일·시간이 각자의 조건에 들어오는지 확인했습니다. 연령·성별 자격 확인은 포함하지 않습니다.</p>
+<section><div class="section-heading"><h2>01 동시 조합</h2><span>{{ result.simultaneous|length }}개</span></div><p class="hint">같은 요일에 수업 시간이 겹치거나 두 수업이 바로 이어집니다. 합계 월 회비가 낮은 순, 겹치는 시간이 긴 순입니다.</p>
+{% for pair in result.simultaneous[:20] %}{{ card(pair, source_url) }}{% else %}<p class="empty">현재 조건에 맞는 동시 조합이 없습니다.</p>{% endfor %}{% if result.simultaneous|length > 20 %}<p>상위 20개를 표시합니다. 조건을 좁혀 다른 조합을 확인하세요.</p>{% endif %}</section>
+<section><div class="section-heading"><h2>02 연속 조합</h2><span>{{ result.consecutive|length }}개</span></div><p class="hint">공통 요일에 두 수업 사이가 60분 이내인 조합입니다. 합계 월 회비가 낮은 순입니다.</p>
+{% for pair in result.consecutive[:20] %}{{ card(pair, source_url) }}{% else %}<p class="empty">현재 조건에 맞는 연속 조합이 없습니다.</p>{% endfor %}{% if result.consecutive|length > 20 %}<p>상위 20개를 표시합니다. 조건을 좁혀 다른 조합을 확인하세요.</p>{% endif %}</section>
+{% if not result.simultaneous and not result.consecutive %}
+<section><h2>03 성립 안 함 → 최소 변경 제안</h2>
+{% if result.fully_impossible %}<p class="empty">요일·시간·예산·종목 제한을 모두 풀어도 성립하는 조합이 없습니다. 이 데이터에서는 제안할 수 없습니다.</p>{% else %}
+<p class="hint">유형별 최소 변경을 실제 강좌로 검증했습니다. 요일은 추가 개수, 예산은 증액, 시간은 확장 분, 종목은 변경 인원으로 최소화합니다. 한 유형만 바꿔 성립하는 방법이 없으면 여러 변경을 함께 제시합니다.</p>
+<p class="hint">제안 순서: 변경 항목 수 → 추가 월 회비 → 추가 요일 수 → 시간 확장 분. 여러 변경이 적힌 제안은 모두 적용해야 성립합니다. 시간 확장은 두 사람의 확장 분 합계입니다.</p>
+{% for suggestion in result.suggestions %}<article class="suggestion"><h3>이렇게 바꾸면 성립해요</h3><ul>{% for change in suggestion.changes %}<li>{{ change }}</li>{% endfor %}</ul><p><strong>추가 예산 +{{ suggestion.extra_monthly_fee|money }}원 / 월</strong> · 요일 +{{ suggestion.added_days }}개 · 시간창 +{{ suggestion.expanded_minutes }}분</p><p class="hint">추가 예산은 현재 예산 상한 대비 증액입니다. 실제 합계 월 회비는 아래 강좌 근거에 표시합니다.</p><a class="button secondary" href="{{ plan_url(suggestion.people) }}">변경한 조건으로 다시 보기</a>{{ card(suggestion.witness, source_url) }}</article>{% endfor %}
+{% endif %}</section>{% endif %}
+{% endblock %}
