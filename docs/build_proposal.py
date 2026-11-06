@@ -13,6 +13,22 @@ from docx.oxml.ns import qn
 from docx.shared import Pt, RGBColor, Cm
 
 
+def _setup_page(doc):
+    """A4 고정 + 줄 간격을 포인트로 고정해 Word/한글에서도 쪽수가 같게 나오도록 한다."""
+    from docx.enum.section import WD_ORIENT  # noqa: F401
+    for section in doc.sections:
+        section.page_width = Cm(21.0)
+        section.page_height = Cm(29.7)
+        section.top_margin = Cm(1.9)
+        section.bottom_margin = Cm(1.9)
+        section.left_margin = Cm(2.0)
+        section.right_margin = Cm(2.0)
+    normal = doc.styles["Normal"]
+    normal.font.name = "맑은 고딕"
+    normal.font.size = Pt(10.5)
+    normal.element.rPr.rFonts.set(qn("w:eastAsia"), "맑은 고딕")
+
+
 def _font(run, size=None, bold=None, color=None, name="맑은 고딕"):
     run.font.name = name
     run._element.rPr.rFonts.set(qn("w:eastAsia"), name)
@@ -77,6 +93,7 @@ def table(doc, rows: list[list[str]], widths_cm: list[float] | None = None, head
 
 def build(path: str) -> None:
     doc = Document()
+    _setup_page(doc)
     style = doc.styles["Normal"]
     style.font.name = "맑은 고딕"
     style.element.rPr.rFonts.set(qn("w:eastAsia"), "맑은 고딕")

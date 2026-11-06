@@ -23,6 +23,22 @@ PAIR_WIDTH = Cm(7.0)
 FIG_WIDTH = Cm(15.2)
 
 
+def _setup_page(doc):
+    """A4 고정 + 줄 간격을 포인트로 고정해 Word/한글에서도 쪽수가 같게 나오도록 한다."""
+    from docx.enum.section import WD_ORIENT  # noqa: F401
+    for section in doc.sections:
+        section.page_width = Cm(21.0)
+        section.page_height = Cm(29.7)
+        section.top_margin = Cm(1.9)
+        section.bottom_margin = Cm(1.9)
+        section.left_margin = Cm(2.0)
+        section.right_margin = Cm(2.0)
+    normal = doc.styles["Normal"]
+    normal.font.name = "맑은 고딕"
+    normal.font.size = Pt(10.5)
+    normal.element.rPr.rFonts.set(qn("w:eastAsia"), "맑은 고딕")
+
+
 def _font(run, size=10.5, bold=False, color=None):
     run.font.name = "맑은 고딕"
     run._element.rPr.rFonts.set(qn("w:eastAsia"), "맑은 고딕")
@@ -45,7 +61,7 @@ def h(doc, text, level=1):
 def p(doc, text="", size=10.5, bold=False, color=None, indent=0.0, align=None, after=5):
     para = doc.add_paragraph()
     para.paragraph_format.space_after = Pt(after)
-    para.paragraph_format.line_spacing = 1.35
+    para.paragraph_format.line_spacing = Pt(size * 1.45)
     if indent:
         para.paragraph_format.left_indent = Cm(indent)
     if align == "center":
@@ -59,7 +75,7 @@ def bullets(doc, items, size=10.5):
     for item in items:
         para = doc.add_paragraph(style="List Bullet")
         para.paragraph_format.space_after = Pt(2)
-        para.paragraph_format.line_spacing = 1.3
+        para.paragraph_format.line_spacing = Pt(size * 1.4)
         _font(para.add_run(item), size=size)
 
 
@@ -67,7 +83,7 @@ def numbered(doc, items, size=10.5):
     for item in items:
         para = doc.add_paragraph(style="List Number")
         para.paragraph_format.space_after = Pt(2)
-        para.paragraph_format.line_spacing = 1.3
+        para.paragraph_format.line_spacing = Pt(size * 1.4)
         _font(para.add_run(item), size=size)
 
 
@@ -81,6 +97,7 @@ def table(doc, rows, widths=None, header=True, size=9.5):
             cells[j].text = ""
             para = cells[j].paragraphs[0]
             para.paragraph_format.space_after = Pt(1)
+            para.paragraph_format.line_spacing = Pt(size * 1.35)
             _font(para.add_run(str(value)), size=size, bold=(header and i == 0))
             if widths:
                 cells[j].width = Cm(widths[j])
@@ -118,6 +135,7 @@ def figure(doc, path: Path, caption: str) -> None:
 
 def build(out: str, figs: Path) -> None:
     doc = Document()
+    _setup_page(doc)
     style = doc.styles["Normal"]
     style.font.name = "맑은 고딕"
     style.element.rPr.rFonts.set(qn("w:eastAsia"), "맑은 고딕")
